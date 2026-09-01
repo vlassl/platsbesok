@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
-<title>Platsbesök v0.2</title>
+<title>Platsbesök v0.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -50,7 +50,7 @@ input,select,textarea{font:inherit;color:inherit}
 #sessBar select{flex:1;min-width:0;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff}
 #plans{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
 #plans::-webkit-scrollbar{display:none}
-.ptab{flex:0 0 auto;min-height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:500}
+.ptab{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;flex:0 0 auto;min-height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:500}
 .ptab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #vp{flex:1;position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;user-select:none;-webkit-user-select:none}
 #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
@@ -63,6 +63,10 @@ input,select,textarea{font:inherit;color:inherit}
 .marker text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .marker.old .wedge{fill:var(--mark-old)}.marker.old circle{fill:var(--mark-old)}
 .marker.pending circle{fill:#fff;stroke:var(--mark);stroke-width:3}.marker.pending .wedge{display:none}
+#northOv{position:absolute;inset:0;touch-action:none;cursor:grab;z-index:5}
+#northSvg{position:absolute;left:50%;top:50%;width:min(60vw,60vh);height:min(60vw,60vh);transform:translate(-50%,-50%);opacity:.5;overflow:visible;pointer-events:none}
+#northG{stroke:var(--mark);stroke-width:5;stroke-linecap:round;fill:var(--mark)}
+#northG text{stroke:none;font-weight:700;font-size:24px;text-anchor:middle;dominant-baseline:central;font-family:inherit}
 #vp .hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(28,31,36,.9);color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;pointer-events:none;white-space:nowrap}
 #vp .emptyPlan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mute);padding:20px;text-align:center}
 #tools{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px}
@@ -110,7 +114,7 @@ input,select,textarea{font:inherit;color:inherit}
     <button class="btn primary" id="btnNewProject">Nytt projekt</button>
     <button class="btn" id="btnImport">Öppna projektfil (.zip)</button>
   </div>
-  <p class="sub" style="margin-top:28px;font-size:13px">Allt sparas lokalt i den här webbläsaren. Foton sparas i originalkvalitet. Exportera projektfil efter varje besök som säkerhetskopia. v0.2</p>
+  <p class="sub" style="margin-top:28px;font-size:13px">Allt sparas lokalt i den här webbläsaren. Foton sparas i originalkvalitet. Exportera projektfil efter varje besök som säkerhetskopia. v0.5</p>
 </div>
 
 <!-- Projektvy -->
@@ -132,6 +136,7 @@ input,select,textarea{font:inherit;color:inherit}
       <canvas id="planCanvas"></canvas>
       <div id="markers"></div>
     </div>
+    <div id="northOv" class="hidden"><svg id="northSvg" viewBox="-50 -50 100 100"><g id="northG"><line x1="0" y1="44" x2="0" y2="-30"/><path d="M0,-46 L-10,-26 L0,-32 L10,-26 Z"/><circle r="4"/><text y="14">N</text></g></svg></div>
     <div id="emptyPlan" class="emptyPlan hidden">
       <div>Inga planritningar ännu.</div>
       <button class="btn primary" id="btnAddPdf0">Lägg till PDF</button>
@@ -146,6 +151,14 @@ input,select,textarea{font:inherit;color:inherit}
   </div>
   <div id="strip"></div>
 
+  <div id="northSheet" class="sheet hidden">
+    <h3>Ställ in norr</h3>
+    <p>Dra i pilen så den pekar mot norr på ritningen. Nu: <b id="northVal">0°</b></p>
+    <div class="row">
+      <button class="btn" id="nM">−1°</button><button class="btn" id="nP">+1°</button><button class="btn" id="nQ">+90°</button>
+      <button class="btn primary" id="btnNorthSave">Spara</button><button class="btn" id="btnNorthCancel">Avbryt</button>
+    </div>
+  </div>
   <div id="pendSheet" class="sheet hidden">
     <h3>Punkt placerad</h3>
     <p>Rikta iPaden åt fotohållet och tryck Ta foto. Riktning: <span id="pendHeading">okänd</span></p>
@@ -228,6 +241,7 @@ async function loadProject(){const pid=S.project.id;
   [S.files,S.plans,S.sessions,S.points]=await Promise.all([byProject('files',pid),byProject('plans',pid),byProject('sessions',pid),byProject('points',pid)]);
   S.plans.sort((a,b)=>(a.order??0)-(b.order??0)||a.name.localeCompare(b.name));
   S.sessions.sort((a,b)=>a.created.localeCompare(b.created));
+  const cnt={};for(const x of S.sessions){if(x.seq==null){cnt[x.date]=(cnt[x.date]||0)+1;x.seq=cnt[x.date];x.label=x.name&&x.name!==x.date?x.name:''}else cnt[x.date]=Math.max(cnt[x.date]||0,x.seq)}
   S.points.sort((a,b)=>a.created.localeCompare(b.created));
 }
 $('#btnBack').onclick=()=>{setMode('view');showProjects()};
@@ -243,21 +257,27 @@ $('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
 });
 
 /* ---------- Platsbesök (sessioner) ---------- */
-async function newSession(silent){const d=today();let name=silent?d:prompt('Namn på besöket:',d);if(name===null)return;name=name.trim()||d;
-  const s={id:uid(),projectId:S.project.id,name,date:d,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
+const sessName=s=>`${s.date}${s.seq>1?' #'+s.seq:''}${s.label?' – '+s.label:''}`;
+const sessFolder=s=>`besok/${s.date}${s.seq>1?'_'+s.seq:''}${s.label?'_'+safeName(s.label):''}`;
+async function newSession(silent){const d=today();let label='';
+  if(!silent){const v=prompt('Tilläggsnamn (valfritt), t.ex. Inventering hyresgäst 1:','');if(v===null)return;label=v.trim()}
+  const seq=S.sessions.filter(x=>x.date===d).length+1;
+  const s={id:uid(),projectId:S.project.id,date:d,seq,label,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
   if(!silent){renderSessions();renderMarkers();renderStrip()}return s}
 function renderSessions(){const sel=$('#sessSel');sel.innerHTML='';
-  for(const s of [...S.sessions].reverse()){const o=document.createElement('option');o.value=s.id;o.textContent=s.name+(s.name!==s.date?` (${s.date})`:'');sel.appendChild(o)}
+  for(const s of [...S.sessions].reverse()){const o=document.createElement('option');o.value=s.id;o.textContent=sessName(s);sel.appendChild(o)}
   sel.value=S.sessionId}
 $('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStrip()};
 $('#btnNewSess').onclick=()=>newSession(false);
 $('#btnSessMenu').onclick=()=>{const s=curSession();const n=S.points.filter(p=>p.sessionId===s.id).length;
-  modal(`<h3>${esc(s.name)}</h3><p class="meta">${n} foton</p>
-  <div class="row"><button class="btn" data-a="rename">Byt namn</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
+  modal(`<h3>${esc(sessName(s))}</h3><p class="meta">${n} foton</p>
+  <div class="row"><button class="btn" data-a="rename">Ändra tilläggsnamn</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
+  ${n&&canShareFiles(sessionPoints(s.id).map(photoFile))?'<button class="btn" data-a="share">Spara alla foton i Bilder</button>':''}
   <button class="btn danger" data-a="del">Radera besök</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
-  if(a==='rename'){const v=prompt('Namn:',s.name);if(v){s.name=v.trim()||s.name;await put('sessions',s);renderSessions()}}
+  if(a==='share')await shareFiles(sessionPoints(s.id).map(photoFile),sessName(s));
+  if(a==='rename'){const v=prompt('Tilläggsnamn:',s.label||'');if(v!==null){s.label=v.trim();await put('sessions',s);renderSessions()}}
   if(a==='toggle'){S.showAll=!S.showAll;renderMarkers()}
-  if(a==='del'&&confirm(`Radera besöket "${s.name}" och dess ${n} foton?`)){
+  if(a==='del'&&confirm(`Radera besöket "${sessName(s)}" och dess ${n} foton?`)){
     for(const p of S.points.filter(p=>p.sessionId===s.id))await del('points',p.id);
     await del('sessions',s.id);await loadProject();if(!S.sessions.length)await newSession(true);S.sessionId=S.sessions[S.sessions.length-1].id;
     renderSessions();renderMarkers();renderStrip()}
@@ -277,7 +297,10 @@ $('#filePdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';
   catch(err){console.error(err);toast('Kunde inte läsa PDF')}finally{busy(false)}};
 function renderPlans(){const el=$('#plans');el.innerHTML='';
   for(const p of S.plans){const b=document.createElement('button');b.className='ptab'+(p.id===S.planId?' on':'');b.textContent=p.name;
-    b.onclick=async()=>{S.planId=p.id;renderPlans();await showPlan();renderStrip()};el.appendChild(b)}
+    let t,lp=false;
+    b.onpointerdown=()=>{lp=false;t=setTimeout(()=>{lp=true;const n=prompt('Namn på planen:',p.name);if(n&&n.trim()){p.name=n.trim();put('plans',p).then(()=>{renderPlans();renderStrip()})}},550)};
+    b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(t);b.oncontextmenu=e=>e.preventDefault();
+    b.onclick=async()=>{if(lp)return;S.planId=p.id;renderPlans();await showPlan();renderStrip()};el.appendChild(b)}
   const add=document.createElement('button');add.className='ptab';add.textContent='+ PDF';add.onclick=()=>$('#filePdf').click();el.appendChild(add);
   el.classList.toggle('hidden',!S.plans.length)}
 async function getPlanCanvas(plan){if(canvasCache.has(plan.id))return canvasCache.get(plan.id);
@@ -295,14 +318,28 @@ async function showPlan(){const plan=curPlan();const cv=$('#planCanvas');
 $('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
   modal(`<h3>${esc(p.name)}</h3>
   <div class="field"><label>Namn</label><input id="fName" value="${esc(p.name)}"></div>
-  <div class="field"><label>Norr på ritningen (grader medurs från rakt upp, 0 = norr uppåt). Styr fotoriktningarna.</label><input id="fNorth" type="number" step="1" value="${p.north||0}"></div>
-  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn danger" data-a="del">Ta bort plan</button><button class="btn" data-a="close">Avbryt</button></div>`,async(a,m)=>{
-  if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;p.north=(+m.querySelector('#fNorth').value||0)%360;await put('plans',p);renderPlans();renderMarkers()}
+  <p class="meta">Norr på ritningen: ${p.north||0}° (styr fotoriktningarna). Långtryck på planfliken byter också namn.</p>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="north">Ställ in norr</button><button class="btn danger" data-a="del">Ta bort plan</button><button class="btn" data-a="close">Avbryt</button></div>`,async(a,m)=>{
+  if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;await put('plans',p);renderPlans();renderStrip()}
+  if(a==='north')startNorth();
   if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!confirm(`Ta bort "${p.name}"${n?` och ${n} foton på den`:''}?`))return;
     for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);await del('plans',p.id);
     if(!S.plans.some(q=>q.fileId===p.fileId&&q.id!==p.id)){await del('files',p.fileId)}
     canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip()}
 })};
+
+/* ---------- Norrpil ---------- */
+let northTmp=0,nDrag=null;const nov=$('#northOv');
+function startNorth(){const p=curPlan();if(!p)return;setMode('view');northTmp=p.north||0;nov.classList.remove('hidden');$('#northSheet').classList.remove('hidden');$('#tools').classList.add('hidden');drawNorth()}
+function drawNorth(){northTmp=((Math.round(northTmp)%360)+360)%360;$('#northG').setAttribute('transform',`rotate(${northTmp})`);$('#northVal').textContent=northTmp+'°'}
+async function endNorth(save){if(save){const p=curPlan();p.north=northTmp;await put('plans',p);renderMarkers();toast('Norr sparat')}
+  nov.classList.add('hidden');$('#northSheet').classList.add('hidden');$('#tools').classList.remove('hidden')}
+const nAng=e=>{const r=nov.getBoundingClientRect();return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2)))*180/Math.PI};
+nov.addEventListener('pointerdown',e=>{nov.setPointerCapture(e.pointerId);nDrag={a0:nAng(e),n0:northTmp}});
+nov.addEventListener('pointermove',e=>{if(!nDrag)return;northTmp=nDrag.n0+nAng(e)-nDrag.a0;drawNorth()});
+nov.addEventListener('pointerup',()=>nDrag=null);nov.addEventListener('pointercancel',()=>nDrag=null);
+$('#nM').onclick=()=>{northTmp-=1;drawNorth()};$('#nP').onclick=()=>{northTmp+=1;drawNorth()};$('#nQ').onclick=()=>{northTmp+=90;drawNorth()};
+$('#btnNorthSave').onclick=()=>endNorth(true);$('#btnNorthCancel').onclick=()=>endNorth(false);
 
 /* ---------- Vy: panorering / zoom ---------- */
 const vp=$('#vp'),world=$('#world');
@@ -312,7 +349,7 @@ function fitView(){const cv=$('#planCanvas');if(!cv.width)return;const r=vp.getB
 $('#btnFit').onclick=fitView;window.addEventListener('resize',()=>{if(!$('#viewProject').classList.contains('hidden'))fitView()});
 const ptrs=new Map();let g=null;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
-vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet'))return;vp.setPointerCapture(e.pointerId);
+vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet,#northOv'))return;vp.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===1)g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
   else if(ptrs.size===2){const [a,b]=[...ptrs.values()];g={type:'pinch',d0:dist(a,b),z0:V.z,px0:V.px,py0:V.py,c0:mid(a,b)}}});
@@ -387,11 +424,12 @@ function centerOn(p){const cv=$('#planCanvas'),r=vp.getBoundingClientRect();V.px
 /* ---------- Punktdetalj ---------- */
 async function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const plan=S.plans.find(x=>x.id===p.planId),sess=S.sessions.find(s=>s.id===p.sessionId);
   const url=URL.createObjectURL(p.photo);
-  modal(`<h3>Foto ${pointIndex(p)} – ${esc(sess?.name||'')}</h3><img class="photo" src="${url}" alt="">
+  modal(`<h3>Foto ${pointIndex(p)} – ${esc(sess?sessName(sess):'')}</h3><img class="photo" src="${url}" alt="">
   <div class="meta"><span>${esc(plan?.name||'')}</span><span>${fmtTime(p.created)}</span><span>${p.heading!=null?'Riktning '+p.heading+'°':'Ingen riktning'}</span></div>
   <div class="field"><label>Anteckning</label><textarea id="fNote">${esc(p.note)}</textarea></div>
-  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="move">Flytta punkt</button><button class="btn danger" data-a="del">Radera</button><button class="btn" data-a="close">Stäng</button></div>`,
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="move">Flytta punkt</button>${canShareFiles([photoFile(p)])?'<button class="btn" data-a="share">Spara i Bilder / Dela</button>':''}<button class="btn danger" data-a="del">Radera</button><button class="btn" data-a="close">Stäng</button></div>`,
   async(a,m)=>{URL.revokeObjectURL(url);
+    if(a==='share')await shareFiles([photoFile(p)],'Foto '+pointIndex(p));
     if(a==='save'){p.note=m.querySelector('#fNote').value;await put('points',p);toast('Sparat')}
     if(a==='del'&&confirm('Radera fotot?')){await del('points',p.id);S.points=S.points.filter(x=>x!==p);renderMarkers();renderStrip()}
     if(a==='move'){toast('Tryck på planen där punkten ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
@@ -405,6 +443,12 @@ function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div cl
   m.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>close(b.dataset.a));
   ov.addEventListener('pointerdown',e=>{if(e.target===ov)close('close')})}
 
+/* ---------- Spara i Bilder (via delningsark) ---------- */
+function photoFile(p){const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);
+  return new File([p.photo],`${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}.${ext(p.photo)}`,{type:p.photo.type||'image/jpeg'})}
+const canShareFiles=files=>!!(navigator.canShare&&files.length&&navigator.canShare({files}));
+async function shareFiles(files,title){try{await navigator.share({files,title})}catch(e){if(e.name!=='AbortError')toast('Delning misslyckades: '+e.message)}}
+
 /* ---------- Export ---------- */
 $('#btnExport').onclick=()=>modal(`<h3>Exportera</h3><p class="meta">Projektfil (.zip) innehåller planer, alla besök med foton i mappar, projekt.json och en fristående rapport.html.</p>
   <div class="row"><button class="btn primary" data-a="zip">Spara projektfil (.zip)</button><button class="btn" data-a="html">Bara rapport.html</button><button class="btn" data-a="close">Avbryt</button></div>`,
@@ -412,19 +456,27 @@ $('#btnExport').onclick=()=>modal(`<h3>Exportera</h3><p class="meta">Projektfil 
 async function buildManifest(){return {app:'platsbesok',version:1,exported:new Date().toISOString(),project:{name:S.project.name,created:S.project.created},
   files:S.files.map(f=>({id:f.id,name:f.name,path:`planer/${f.id}_${safeName(f.name)}`})),
   plans:S.plans.map(p=>({id:p.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0})),
-  sessions:S.sessions.map(s=>({id:s.id,name:s.name,date:s.date,created:s.created,folder:`besok/${s.date}_${safeName(s.name)}`})),
+  sessions:S.sessions.map(s=>({id:s.id,name:sessName(s),date:s.date,seq:s.seq,label:s.label,created:s.created,folder:sessFolder(s)})),
   points:S.points.map(p=>{const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);
     return {id:p.id,sessionId:p.sessionId,planId:p.planId,x:+p.x.toFixed(5),y:+p.y.toFixed(5),heading:p.heading,note:p.note,created:p.created,
-      path:`besok/${s.date}_${safeName(s.name)}/${s.date}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}.${ext(p.photo)}`}})}}
+      path:`${sessFolder(s)}/${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}.${ext(p.photo)}`}})}}
 async function exportZip(){busy(true);try{const man=await buildManifest();const zip=new JSZip();
   zip.file('projekt.json',JSON.stringify(man,null,2));
   for(const f of S.files)zip.file(man.files.find(x=>x.id===f.id).path,f.blob);
   for(const p of S.points)zip.file(man.points.find(x=>x.id===p.id).path,p.photo);
   zip.file('rapport.html',await buildReport(man));
-  const blob=await zip.generateAsync({type:'blob',compression:'STORE'});download(blob,`${safeName(S.project.name)}_platsbesok_${today()}.zip`);toast('Projektfil skapad')}
+  const blob=await zip.generateAsync({type:'blob',compression:'STORE'});busy(false);offerSave(blob,`${safeName(S.project.name)}_platsbesok_${today()}.zip`)}
   catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
-async function exportHtmlOnly(){busy(true);try{const html=await buildReport(await buildManifest());download(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
+async function exportHtmlOnly(){busy(true);try{const html=await buildReport(await buildManifest());busy(false);offerSave(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
   catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
+function offerSave(blob,name){const mb=(blob.size/1048576).toFixed(1);const file=new File([blob],name,{type:blob.type||'application/octet-stream'});
+  const canPick=!!window.showSaveFilePicker,canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+  modal(`<h3>Filen är klar</h3><p class="meta">${esc(name)} · ${mb} MB</p>
+  <div class="row">${canPick?'<button class="btn primary" data-a="pick">Spara som…</button>':''}${canShare?'<button class="btn primary" data-a="share">Spara till… / Dela</button>':''}
+  <button class="btn" data-a="dl">Ladda ner</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+    if(a==='pick'){try{const h=await showSaveFilePicker({suggestedName:name});const w=await h.createWritable();await w.write(blob);await w.close();toast('Sparad')}catch(e){if(e.name!=='AbortError')toast('Kunde inte spara: '+e.message)}}
+    if(a==='share'){try{await navigator.share({files:[file],title:name})}catch(e){if(e.name!=='AbortError')toast('Delning misslyckades: '+e.message)}}
+    if(a==='dl')download(blob,name)})}
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
 async function buildReport(man){
   const plans=[];for(const p of S.plans){const c=await getPlanCanvas(p);const s=Math.min(1,1800/Math.max(c.width,c.height));const o=document.createElement('canvas');
@@ -468,7 +520,7 @@ async function importZip(file){busy(true);try{const zip=await JSZip.loadAsync(fi
   const id=uid(),map=new Map();const proj={id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj);
   for(const f of man.files){const e=zip.file(f.path);if(!e)continue;const nid=uid();map.set(f.id,nid);await put('files',{id:nid,projectId:id,name:f.name,blob:await e.async('blob')})}
   for(const p of man.plans){const nid=uid();map.set(p.id,nid);await put('plans',{id:nid,projectId:id,fileId:map.get(p.fileId),page:p.page,name:p.name,north:p.north||0,order:p.order??0})}
-  for(const s of man.sessions){const nid=uid();map.set(s.id,nid);await put('sessions',{id:nid,projectId:id,name:s.name,date:s.date,created:s.created})}
+  for(const s of man.sessions){const nid=uid();map.set(s.id,nid);await put('sessions',{id:nid,projectId:id,date:s.date,seq:s.seq??1,label:s.label??(s.name&&s.name!==s.date?s.name:''),created:s.created})}
   let n=0;for(const p of man.points){const e=zip.file(p.path);if(!e)continue;const full=await e.async('blob');const {thumb}=await processImage(full);
     await put('points',{id:uid(),projectId:id,sessionId:map.get(p.sessionId),planId:map.get(p.planId),x:p.x,y:p.y,heading:p.heading,note:p.note||'',created:p.created,photo:full,thumb});n++}
   toast(`Importerat: ${n} foton`);openProject(proj)}
