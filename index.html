@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>Platsbesök v0.2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --ink:#1c1f24; --mute:#6b7280; --line:#d9dce2; --bg:#f3f4f6; --panel:#ffffff;
+  --mark:#e8541f; --mark-old:#4b5c72; --focus:#2563eb;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.view{position:absolute;inset:0;display:flex;flex-direction:column}
+
+/* --- Projektlista --- */
+#viewProjects{padding:calc(var(--sat) + 20px) 20px 20px;max-width:640px;margin:0 auto;width:100%;overflow:auto}
+#viewProjects h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px}
+#viewProjects .sub{color:var(--mute);margin:0 0 24px}
+.plist{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.pitem{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:14px 16px;text-align:left;width:100%;min-height:60px}
+.pitem b{font-weight:600;display:block}.pitem small{color:var(--mute)}
+.pitem .chev{color:var(--mute);font-size:20px}
+.empty{color:var(--mute);padding:28px 0;text-align:center;border:1px dashed var(--line);border-radius:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:9px;
+  background:var(--panel);border:1px solid var(--line);font-weight:500;white-space:nowrap}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.accent{background:var(--mark);color:#fff;border-color:var(--mark)}
+.btn.danger{color:#b91c1c;border-color:#f3c5c5}
+.btn.icon{width:44px;padding:0;font-size:20px}
+.btn:disabled{opacity:.45}
+
+/* --- Projektvy --- */
+#top{display:flex;align-items:center;gap:8px;padding:calc(var(--sat) + 8px) 10px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+#top .title{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sessBar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#sessBar select{flex:1;min-width:0;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff}
+#plans{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
+#plans::-webkit-scrollbar{display:none}
+.ptab{flex:0 0 auto;min-height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:500}
+.ptab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#vp{flex:1;position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;user-select:none;-webkit-user-select:none}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#planCanvas{display:block;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+#markers{position:absolute;inset:0}
+.marker{position:absolute;width:0;height:0;overflow:visible}
+.marker svg{position:absolute;left:-22px;top:-22px;width:44px;height:44px;transform:scale(var(--inv,1));transform-origin:center;overflow:visible}
+.marker .wedge{fill:var(--mark);opacity:.45}
+.marker circle{fill:var(--mark);stroke:#fff;stroke-width:2}
+.marker text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.marker.old .wedge{fill:var(--mark-old)}.marker.old circle{fill:var(--mark-old)}
+.marker.pending circle{fill:#fff;stroke:var(--mark);stroke-width:3}.marker.pending .wedge{display:none}
+#vp .hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(28,31,36,.9);color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;pointer-events:none;white-space:nowrap}
+#vp .emptyPlan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mute);padding:20px;text-align:center}
+#tools{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px}
+#tools .btn{box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#compass{position:absolute;left:12px;bottom:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;min-height:44px;padding:0 12px;
+  display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:14px}
+#compass .needle{display:inline-block;width:16px;height:16px;transition:transform .15s}
+#strip{display:flex;gap:8px;padding:8px 10px calc(var(--sab) + 8px);overflow-x:auto;background:var(--panel);border-top:1px solid var(--line);min-height:96px;align-items:center}
+#strip .th{flex:0 0 auto;width:72px;height:72px;border-radius:8px;overflow:hidden;position:relative;background:#e5e7eb;border:2px solid transparent}
+#strip .th.on{border-color:var(--mark)}
+#strip .th img{width:100%;height:100%;object-fit:cover;display:block}
+#strip .th b{position:absolute;left:4px;top:4px;background:var(--mark);color:#fff;font-size:11px;padding:1px 6px;border-radius:10px}
+#strip .none{color:var(--mute);font-size:14px;padding:0 6px}
+
+/* --- Sheet / modal --- */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:14px 14px 0 0;
+  padding:14px 16px calc(var(--sab) + 14px);box-shadow:0 -6px 24px rgba(0,0,0,.15);z-index:20}
+.sheet h3{margin:0 0 6px;font-size:17px;font-weight:600}
+.sheet p{margin:0 0 12px;color:var(--mute);font-size:14px}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.overlay{align-items:center}.overlay .modal{border-radius:14px;max-width:560px;width:calc(100% - 40px);max-height:90vh}}
+.modal{background:var(--panel);width:100%;max-height:92vh;border-radius:14px 14px 0 0;overflow:auto;padding:16px 16px calc(var(--sab) + 16px)}
+.modal h3{margin:0 0 10px;font-size:18px;font-weight:600}
+.modal img.photo{width:100%;border-radius:10px;display:block;background:#e5e7eb;max-height:55vh;object-fit:contain}
+.meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--mute);font-size:14px;margin:10px 0}
+.field{margin:10px 0}.field label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.field textarea{min-height:70px;resize:vertical}
+.modal .row{margin-top:14px}
+#toast{position:absolute;left:50%;bottom:calc(var(--sab) + 110px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:20px;
+  font-size:14px;z-index:50;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
+#busy{position:absolute;inset:0;background:rgba(255,255,255,.7);z-index:60;display:flex;align-items:center;justify-content:center;font-weight:500}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Projektlista -->
+<div id="viewProjects" class="view">
+  <h1>Platsbesök</h1>
+  <p class="sub">Foton kopplade till punkter på planritningar.</p>
+  <div id="plist" class="plist"></div>
+  <div class="row">
+    <button class="btn primary" id="btnNewProject">Nytt projekt</button>
+    <button class="btn" id="btnImport">Öppna projektfil (.zip)</button>
+  </div>
+  <p class="sub" style="margin-top:28px;font-size:13px">Allt sparas lokalt i den här webbläsaren. Foton sparas i originalkvalitet. Exportera projektfil efter varje besök som säkerhetskopia. v0.2</p>
+</div>
+
+<!-- Projektvy -->
+<div id="viewProject" class="view hidden">
+  <div id="top">
+    <button class="btn icon" id="btnBack" aria-label="Tillbaka">‹</button>
+    <div class="title" id="projTitle"></div>
+    <button class="btn" id="btnExport">Exportera</button>
+    <button class="btn icon" id="btnProjMenu" aria-label="Projektmeny">⋯</button>
+  </div>
+  <div id="sessBar">
+    <select id="sessSel" aria-label="Platsbesök"></select>
+    <button class="btn" id="btnNewSess">Nytt besök</button>
+    <button class="btn icon" id="btnSessMenu" aria-label="Besöksmeny">⋯</button>
+  </div>
+  <div id="plans"></div>
+  <div id="vp">
+    <div id="world">
+      <canvas id="planCanvas"></canvas>
+      <div id="markers"></div>
+    </div>
+    <div id="emptyPlan" class="emptyPlan hidden">
+      <div>Inga planritningar ännu.</div>
+      <button class="btn primary" id="btnAddPdf0">Lägg till PDF</button>
+    </div>
+    <div id="hint" class="hint hidden">Tryck på planen där fotot tas</div>
+    <div id="compass" class="hidden"><span class="needle">▲</span><span id="compassVal">–</span></div>
+    <div id="tools">
+      <button class="btn icon" id="btnFit" aria-label="Anpassa vy">⤢</button>
+      <button class="btn icon" id="btnPlanMenu" aria-label="Planmeny">⚙</button>
+      <button class="btn accent" id="btnAddMode">＋ Ny punkt</button>
+    </div>
+  </div>
+  <div id="strip"></div>
+
+  <div id="pendSheet" class="sheet hidden">
+    <h3>Punkt placerad</h3>
+    <p>Rikta iPaden åt fotohållet och tryck Ta foto. Riktning: <span id="pendHeading">okänd</span></p>
+    <div class="row">
+      <button class="btn accent" id="btnShoot">Ta foto</button>
+      <button class="btn" id="btnPick">Välj bild</button>
+      <button class="btn" id="btnPendCancel">Avbryt</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="filePick" accept="image/*" class="hidden">
+<input type="file" id="filePdf" accept="application/pdf" multiple class="hidden">
+<input type="file" id="fileZip" accept=".zip,application/zip" class="hidden">
+
+<div id="modalHost"></div>
+<div id="toast"></div>
+<div id="busy" class="hidden">Arbetar…</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- Hjälp ---------- */
+const $=s=>document.querySelector(s);
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeName=s=>String(s).normalize('NFC').replace(/[^\wåäöÅÄÖ.-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60)||'x';
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtTime=iso=>new Date(iso).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'});
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+function busy(on){$('#busy').classList.toggle('hidden',!on)}
+const blobToDataURL=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});
+
+/* ---------- IndexedDB ---------- */
+let db;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('platsbesok',1);
+  r.onupgradeneeded=e=>{const d=e.target.result;
+    for(const s of ['projects','files','plans','sessions','points']){const st=d.createObjectStore(s,{keyPath:'id'});
+      if(s!=='projects')st.createIndex('projectId','projectId');if(s==='points')st.createIndex('sessionId','sessionId')}};
+  r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error)})}
+function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);const req=fn(t.objectStore(store));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error)})}
+const put=(s,o)=>tx(s,'readwrite',st=>st.put(o));
+const del=(s,id)=>tx(s,'readwrite',st=>st.delete(id));
+const getAll=s=>tx(s,'readonly',st=>st.getAll());
+const byProject=(s,pid)=>tx(s,'readonly',st=>st.index('projectId').getAll(pid));
+
+/* ---------- State ---------- */
+const S={project:null,files:[],plans:[],sessions:[],points:[],planId:null,sessionId:null,mode:'view',pending:null,showAll:true};
+const V={z:1,px:0,py:0};
+const pdfCache=new Map(), canvasCache=new Map();
+let lastHeading=null, compassOn=false;
+
+/* ---------- Projektlista ---------- */
+async function showProjects(){
+  $('#viewProject').classList.add('hidden');$('#viewProjects').classList.remove('hidden');
+  const ps=(await getAll('projects')).sort((a,b)=>b.created.localeCompare(a.created));
+  const el=$('#plist');el.innerHTML='';
+  if(!ps.length){el.innerHTML='<div class="empty">Inga projekt. Skapa ett nytt eller öppna en projektfil.</div>';return}
+  for(const p of ps){const b=document.createElement('button');b.className='pitem';
+    b.innerHTML=`<span><b>${esc(p.name)}</b><small>Skapat ${p.created.slice(0,10)}</small></span><span class="chev">›</span>`;
+    b.onclick=()=>openProject(p);el.appendChild(b)}
+}
+$('#btnNewProject').onclick=async()=>{const name=prompt('Projektnamn:');if(!name)return;const p={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',p);openProject(p)};
+$('#btnImport').onclick=()=>$('#fileZip').click();
+$('#fileZip').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await importZip(f)};
+
+/* ---------- Projektvy ---------- */
+async function openProject(p){
+  S.project=p;$('#projTitle').textContent=p.name;
+  $('#viewProjects').classList.add('hidden');$('#viewProject').classList.remove('hidden');
+  await loadProject();
+  if(!S.sessions.length)await newSession(true);
+  S.sessionId=S.sessions[S.sessions.length-1].id;
+  S.planId=S.plans[0]?.id||null;
+  renderSessions();renderPlans();await showPlan();renderStrip();
+}
+async function loadProject(){const pid=S.project.id;
+  [S.files,S.plans,S.sessions,S.points]=await Promise.all([byProject('files',pid),byProject('plans',pid),byProject('sessions',pid),byProject('points',pid)]);
+  S.plans.sort((a,b)=>(a.order??0)-(b.order??0)||a.name.localeCompare(b.name));
+  S.sessions.sort((a,b)=>a.created.localeCompare(b.created));
+  S.points.sort((a,b)=>a.created.localeCompare(b.created));
+}
+$('#btnBack').onclick=()=>{setMode('view');showProjects()};
+
+$('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
+  <div class="row"><button class="btn" data-a="rename">Byt namn</button><button class="btn" data-a="pdf">Lägg till PDF</button>
+  <button class="btn danger" data-a="del">Radera projekt</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+  if(a==='rename'){const n=prompt('Projektnamn:',S.project.name);if(n){S.project.name=n.trim();await put('projects',S.project);$('#projTitle').textContent=S.project.name}}
+  if(a==='pdf')$('#filePdf').click();
+  if(a==='del'&&confirm(`Radera "${S.project.name}" med alla planer och foton?`)){
+    for(const s of ['files','plans','sessions','points'])for(const o of await byProject(s,S.project.id))await del(s,o.id);
+    await del('projects',S.project.id);showProjects()}
+});
+
+/* ---------- Platsbesök (sessioner) ---------- */
+async function newSession(silent){const d=today();let name=silent?d:prompt('Namn på besöket:',d);if(name===null)return;name=name.trim()||d;
+  const s={id:uid(),projectId:S.project.id,name,date:d,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
+  if(!silent){renderSessions();renderMarkers();renderStrip()}return s}
+function renderSessions(){const sel=$('#sessSel');sel.innerHTML='';
+  for(const s of [...S.sessions].reverse()){const o=document.createElement('option');o.value=s.id;o.textContent=s.name+(s.name!==s.date?` (${s.date})`:'');sel.appendChild(o)}
+  sel.value=S.sessionId}
+$('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStrip()};
+$('#btnNewSess').onclick=()=>newSession(false);
+$('#btnSessMenu').onclick=()=>{const s=curSession();const n=S.points.filter(p=>p.sessionId===s.id).length;
+  modal(`<h3>${esc(s.name)}</h3><p class="meta">${n} foton</p>
+  <div class="row"><button class="btn" data-a="rename">Byt namn</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
+  <button class="btn danger" data-a="del">Radera besök</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+  if(a==='rename'){const v=prompt('Namn:',s.name);if(v){s.name=v.trim()||s.name;await put('sessions',s);renderSessions()}}
+  if(a==='toggle'){S.showAll=!S.showAll;renderMarkers()}
+  if(a==='del'&&confirm(`Radera besöket "${s.name}" och dess ${n} foton?`)){
+    for(const p of S.points.filter(p=>p.sessionId===s.id))await del('points',p.id);
+    await del('sessions',s.id);await loadProject();if(!S.sessions.length)await newSession(true);S.sessionId=S.sessions[S.sessions.length-1].id;
+    renderSessions();renderMarkers();renderStrip()}
+})};
+const curSession=()=>S.sessions.find(s=>s.id===S.sessionId);
+const curPlan=()=>S.plans.find(p=>p.id===S.planId);
+
+/* ---------- Planer (PDF) ---------- */
+$('#btnAddPdf0').onclick=()=>$('#filePdf').click();
+$('#filePdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;busy(true);
+  try{for(const f of fs){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+      const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
+      const base=f.name.replace(/\.pdf$/i,'');
+      for(let i=1;i<=pdf.numPages;i++){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
+        await put('plans',pl);S.plans.push(pl)}}
+    if(!S.planId)S.planId=S.plans[0].id;renderPlans();await showPlan();toast('Planer tillagda')}
+  catch(err){console.error(err);toast('Kunde inte läsa PDF')}finally{busy(false)}};
+function renderPlans(){const el=$('#plans');el.innerHTML='';
+  for(const p of S.plans){const b=document.createElement('button');b.className='ptab'+(p.id===S.planId?' on':'');b.textContent=p.name;
+    b.onclick=async()=>{S.planId=p.id;renderPlans();await showPlan();renderStrip()};el.appendChild(b)}
+  const add=document.createElement('button');add.className='ptab';add.textContent='+ PDF';add.onclick=()=>$('#filePdf').click();el.appendChild(add);
+  el.classList.toggle('hidden',!S.plans.length)}
+async function getPlanCanvas(plan){if(canvasCache.has(plan.id))return canvasCache.get(plan.id);
+  let pdf=pdfCache.get(plan.fileId);
+  if(!pdf){const f=S.files.find(f=>f.id===plan.fileId);pdf=await pdfjsLib.getDocument({data:await f.blob.arrayBuffer()}).promise;pdfCache.set(plan.fileId,pdf)}
+  const page=await pdf.getPage(plan.page);const v1=page.getViewport({scale:1});const scale=Math.min(3,2600/Math.max(v1.width,v1.height));
+  const vp=page.getViewport({scale});const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  if(canvasCache.size>=4)canvasCache.delete(canvasCache.keys().next().value);canvasCache.set(plan.id,c);return c}
+async function showPlan(){const plan=curPlan();const cv=$('#planCanvas');
+  $('#emptyPlan').classList.toggle('hidden',!!plan);$('#tools').classList.toggle('hidden',!plan);
+  if(!plan){cv.width=cv.height=0;$('#markers').innerHTML='';return}
+  busy(true);try{const src=await getPlanCanvas(plan);cv.width=src.width;cv.height=src.height;cv.getContext('2d').drawImage(src,0,0);fitView();renderMarkers()}
+  catch(e){console.error(e);toast('Kunde inte rendera planen')}finally{busy(false)}}
+$('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
+  modal(`<h3>${esc(p.name)}</h3>
+  <div class="field"><label>Namn</label><input id="fName" value="${esc(p.name)}"></div>
+  <div class="field"><label>Norr på ritningen (grader medurs från rakt upp, 0 = norr uppåt). Styr fotoriktningarna.</label><input id="fNorth" type="number" step="1" value="${p.north||0}"></div>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn danger" data-a="del">Ta bort plan</button><button class="btn" data-a="close">Avbryt</button></div>`,async(a,m)=>{
+  if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;p.north=(+m.querySelector('#fNorth').value||0)%360;await put('plans',p);renderPlans();renderMarkers()}
+  if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!confirm(`Ta bort "${p.name}"${n?` och ${n} foton på den`:''}?`))return;
+    for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);await del('plans',p.id);
+    if(!S.plans.some(q=>q.fileId===p.fileId&&q.id!==p.id)){await del('files',p.fileId)}
+    canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip()}
+})};
+
+/* ---------- Vy: panorering / zoom ---------- */
+const vp=$('#vp'),world=$('#world');
+function applyView(){world.style.transform=`translate(${V.px}px,${V.py}px) scale(${V.z})`;$('#markers').style.setProperty('--inv',1/V.z)}
+function fitView(){const cv=$('#planCanvas');if(!cv.width)return;const r=vp.getBoundingClientRect();
+  V.z=Math.min(r.width/cv.width,r.height/cv.height)*.96;V.px=(r.width-cv.width*V.z)/2;V.py=(r.height-cv.height*V.z)/2;applyView()}
+$('#btnFit').onclick=fitView;window.addEventListener('resize',()=>{if(!$('#viewProject').classList.contains('hidden'))fitView()});
+const ptrs=new Map();let g=null;
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet'))return;vp.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1)g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];g={type:'pinch',d0:dist(a,b),z0:V.z,px0:V.px,py0:V.py,c0:mid(a,b)}}});
+vp.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId)||!g)return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(g.type==='pan'&&ptrs.size===1){const dx=e.clientX-g.sx,dy=e.clientY-g.sy;if(Math.hypot(dx,dy)>8)g.moved=true;if(g.moved){V.px=g.px+dx;V.py=g.py+dy;applyView()}}
+  else if(g.type==='pinch'&&ptrs.size===2){const [a,b]=[...ptrs.values()];const r=vp.getBoundingClientRect();const z=clamp(g.z0*dist(a,b)/g.d0,.05,12);
+    const wx=(g.c0.x-r.left-g.px0)/g.z0,wy=(g.c0.y-r.top-g.py0)/g.z0;const c=mid(a,b);V.z=z;V.px=c.x-r.left-wx*z;V.py=c.y-r.top-wy*z;applyView()}});
+function endPtr(e){const tap=g&&g.type==='pan'&&!g.moved&&ptrs.size===1;ptrs.delete(e.pointerId);
+  if(tap)onTap(e,g.target);
+  if(ptrs.size===1){const [p]=[...ptrs.values()];g={type:'pan',sx:p.x,sy:p.y,px:V.px,py:V.py,moved:true}}else if(!ptrs.size)g=null}
+vp.addEventListener('pointerup',endPtr);vp.addEventListener('pointercancel',endPtr);
+vp.addEventListener('wheel',e=>{e.preventDefault();const r=vp.getBoundingClientRect();const z=clamp(V.z*(e.deltaY<0?1.15:1/1.15),.05,12);
+  const wx=(e.clientX-r.left-V.px)/V.z,wy=(e.clientY-r.top-V.py)/V.z;V.z=z;V.px=e.clientX-r.left-wx*z;V.py=e.clientY-r.top-wy*z;applyView()},{passive:false});
+function onTap(e,target){const mk=target.closest&&target.closest('.marker');
+  if(mk&&mk.dataset.id){openPoint(mk.dataset.id);return}
+  if(S.mode!=='add'||!curPlan())return;
+  const r=vp.getBoundingClientRect(),cv=$('#planCanvas');const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;
+  if(x<0||x>1||y<0||y>1)return;
+  S.pending={x,y,planId:S.planId};renderMarkers();$('#pendSheet').classList.remove('hidden');$('#hint').classList.add('hidden');updateCompassUI()}
+
+/* ---------- Lägga till punkt ---------- */
+function setMode(m){S.mode=m;$('#btnAddMode').textContent=m==='add'?'Klar':'＋ Ny punkt';$('#btnAddMode').classList.toggle('accent',m!=='add');
+  $('#hint').classList.toggle('hidden',m!=='add');if(m!=='add')cancelPending();if(m==='add'&&!compassOn)enableCompass()}
+$('#btnAddMode').onclick=()=>setMode(S.mode==='add'?'view':'add');
+function cancelPending(){S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();if(S.mode==='add')$('#hint').classList.remove('hidden')}
+$('#btnPendCancel').onclick=cancelPending;
+$('#btnShoot').onclick=()=>{if(S.pending)S.pending.heading=lastHeading;$('#fileCam').click()};
+$('#btnPick').onclick=()=>{if(S.pending)S.pending.heading=lastHeading;$('#filePick').click()};
+async function onPhoto(e){const f=e.target.files[0];e.target.value='';if(!f||!S.pending)return;busy(true);
+  try{const {full,thumb}=await processImage(f);
+    const p={id:uid(),projectId:S.project.id,sessionId:S.sessionId,planId:S.pending.planId,x:S.pending.x,y:S.pending.y,heading:S.pending.heading??null,note:'',created:new Date().toISOString(),photo:full,thumb};
+    await put('points',p);S.points.push(p);S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();renderStrip();
+    if(S.mode==='add')$('#hint').classList.remove('hidden');toast('Foto sparat')}
+  catch(err){console.error(err);toast('Kunde inte spara fotot')}finally{busy(false)}}
+$('#fileCam').onchange=onPhoto;$('#filePick').onchange=onPhoto;
+async function processImage(file){let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch{bmp=await createImageBitmap(file)}
+  const mk=(max,q)=>{const s=Math.min(1,max/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',q))};
+  const thumb=await mk(320,.7);bmp.close&&bmp.close();return {full:file,thumb}}
+const ext=b=>({'image/png':'png','image/heic':'heic','image/heif':'heif','image/webp':'webp'}[b.type]||'jpg');
+
+/* ---------- Kompass ---------- */
+function onOrient(e){let h=null;if(e.webkitCompassHeading!=null)h=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)h=(360-e.alpha)%360;
+  if(h!=null&&!isNaN(h)){lastHeading=Math.round(h);updateCompassUI()}}
+async function enableCompass(){if(compassOn)return;
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    try{if(await DeviceOrientationEvent.requestPermission()!=='granted'){toast('Kompass nekad – riktning sparas inte');return}}catch{toast('Kompass ej tillgänglig');return}}
+  if(!window.DeviceOrientationEvent)return;
+  window.addEventListener('deviceorientationabsolute',onOrient,true);window.addEventListener('deviceorientation',onOrient,true);
+  compassOn=true;$('#compass').classList.remove('hidden');updateCompassUI()}
+function updateCompassUI(){const v=lastHeading==null?'–':lastHeading+'°';$('#compassVal').textContent=v;$('#pendHeading').textContent=lastHeading==null?'okänd':lastHeading+'°';
+  const n=$('#compass .needle');if(n)n.style.transform=`rotate(${lastHeading==null?0:-lastHeading}deg)`}
+
+/* ---------- Markörer & fotoremsa ---------- */
+function sessionPoints(sid){return S.points.filter(p=>p.sessionId===sid)}
+function pointIndex(p){return sessionPoints(p.sessionId).indexOf(p)+1}
+function markerSVG(p,plan,cls){const has=p.heading!=null;const ang=has?((p.heading+(plan?.north||0))%360):0;
+  return `<svg viewBox="-22 -22 44 44">${has?`<path class="wedge" d="M0,0 L-11,-21 A24,24 0 0 1 11,-21 Z" transform="rotate(${ang})"/>`:''}<circle r="10"/><text>${cls==='pending'?'':pointIndex(p)}</text></svg>`}
+function renderMarkers(){const el=$('#markers');el.innerHTML='';const plan=curPlan();if(!plan)return;
+  const pts=S.points.filter(p=>p.planId===plan.id&&(S.showAll||p.sessionId===S.sessionId));
+  for(const p of pts){const d=document.createElement('div');d.className='marker'+(p.sessionId===S.sessionId?'':' old');d.dataset.id=p.id;
+    d.style.left=p.x*100+'%';d.style.top=p.y*100+'%';d.innerHTML=markerSVG(p,plan);el.appendChild(d)}
+  if(S.pending&&S.pending.planId===plan.id){const d=document.createElement('div');d.className='marker pending';d.style.left=S.pending.x*100+'%';d.style.top=S.pending.y*100+'%';
+    d.innerHTML=markerSVG(S.pending,plan,'pending');el.appendChild(d)}}
+const urlCache=new Map();function thumbURL(p){if(!urlCache.has(p.id))urlCache.set(p.id,URL.createObjectURL(p.thumb));return urlCache.get(p.id)}
+function renderStrip(){const el=$('#strip');el.innerHTML='';const pts=sessionPoints(S.sessionId);
+  if(!pts.length){el.innerHTML='<div class="none">Inga foton i detta besök ännu. Tryck Ny punkt och sedan på planen.</div>';return}
+  for(const p of pts){const b=document.createElement('button');b.className='th'+(p.planId===S.planId?' on':'');
+    b.innerHTML=`<img src="${thumbURL(p)}" alt=""><b>${pointIndex(p)}</b>`;b.onclick=async()=>{if(p.planId!==S.planId){S.planId=p.planId;renderPlans();await showPlan();renderStrip()}centerOn(p);openPoint(p.id)};el.appendChild(b)}}
+function centerOn(p){const cv=$('#planCanvas'),r=vp.getBoundingClientRect();V.px=r.width/2-p.x*cv.width*V.z;V.py=r.height/2-p.y*cv.height*V.z;applyView()}
+
+/* ---------- Punktdetalj ---------- */
+async function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const plan=S.plans.find(x=>x.id===p.planId),sess=S.sessions.find(s=>s.id===p.sessionId);
+  const url=URL.createObjectURL(p.photo);
+  modal(`<h3>Foto ${pointIndex(p)} – ${esc(sess?.name||'')}</h3><img class="photo" src="${url}" alt="">
+  <div class="meta"><span>${esc(plan?.name||'')}</span><span>${fmtTime(p.created)}</span><span>${p.heading!=null?'Riktning '+p.heading+'°':'Ingen riktning'}</span></div>
+  <div class="field"><label>Anteckning</label><textarea id="fNote">${esc(p.note)}</textarea></div>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="move">Flytta punkt</button><button class="btn danger" data-a="del">Radera</button><button class="btn" data-a="close">Stäng</button></div>`,
+  async(a,m)=>{URL.revokeObjectURL(url);
+    if(a==='save'){p.note=m.querySelector('#fNote').value;await put('points',p);toast('Sparat')}
+    if(a==='del'&&confirm('Radera fotot?')){await del('points',p.id);S.points=S.points.filter(x=>x!==p);renderMarkers();renderStrip()}
+    if(a==='move'){toast('Tryck på planen där punkten ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
+      const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;if(x>=0&&x<=1&&y>=0&&y<=1){p.x=x;p.y=y;p.planId=S.planId;await put('points',p);renderMarkers();renderStrip()}
+      vp.removeEventListener('pointerup',h,true)};setTimeout(()=>vp.addEventListener('pointerup',h,true),50)}})}
+
+/* ---------- Modal ---------- */
+function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div class="overlay"><div class="modal">${html}</div></div>`;
+  const ov=host.firstElementChild,m=ov.firstElementChild;
+  const close=async a=>{await onAction?.(a,m);host.innerHTML=''};
+  m.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>close(b.dataset.a));
+  ov.addEventListener('pointerdown',e=>{if(e.target===ov)close('close')})}
+
+/* ---------- Export ---------- */
+$('#btnExport').onclick=()=>modal(`<h3>Exportera</h3><p class="meta">Projektfil (.zip) innehåller planer, alla besök med foton i mappar, projekt.json och en fristående rapport.html.</p>
+  <div class="row"><button class="btn primary" data-a="zip">Spara projektfil (.zip)</button><button class="btn" data-a="html">Bara rapport.html</button><button class="btn" data-a="close">Avbryt</button></div>`,
+  async a=>{if(a==='zip')await exportZip();if(a==='html')await exportHtmlOnly()});
+async function buildManifest(){return {app:'platsbesok',version:1,exported:new Date().toISOString(),project:{name:S.project.name,created:S.project.created},
+  files:S.files.map(f=>({id:f.id,name:f.name,path:`planer/${f.id}_${safeName(f.name)}`})),
+  plans:S.plans.map(p=>({id:p.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0})),
+  sessions:S.sessions.map(s=>({id:s.id,name:s.name,date:s.date,created:s.created,folder:`besok/${s.date}_${safeName(s.name)}`})),
+  points:S.points.map(p=>{const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);
+    return {id:p.id,sessionId:p.sessionId,planId:p.planId,x:+p.x.toFixed(5),y:+p.y.toFixed(5),heading:p.heading,note:p.note,created:p.created,
+      path:`besok/${s.date}_${safeName(s.name)}/${s.date}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}.${ext(p.photo)}`}})}}
+async function exportZip(){busy(true);try{const man=await buildManifest();const zip=new JSZip();
+  zip.file('projekt.json',JSON.stringify(man,null,2));
+  for(const f of S.files)zip.file(man.files.find(x=>x.id===f.id).path,f.blob);
+  for(const p of S.points)zip.file(man.points.find(x=>x.id===p.id).path,p.photo);
+  zip.file('rapport.html',await buildReport(man));
+  const blob=await zip.generateAsync({type:'blob',compression:'STORE'});download(blob,`${safeName(S.project.name)}_platsbesok_${today()}.zip`);toast('Projektfil skapad')}
+  catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
+async function exportHtmlOnly(){busy(true);try{const html=await buildReport(await buildManifest());download(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
+  catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+async function buildReport(man){
+  const plans=[];for(const p of S.plans){const c=await getPlanCanvas(p);const s=Math.min(1,1800/Math.max(c.width,c.height));const o=document.createElement('canvas');
+    o.width=Math.round(c.width*s);o.height=Math.round(c.height*s);o.getContext('2d').drawImage(c,0,0,o.width,o.height);plans.push({...man.plans.find(x=>x.id===p.id),img:o.toDataURL('image/jpeg',.8),w:o.width,h:o.height})}
+  const points=[];for(const p of S.points){const m=man.points.find(x=>x.id===p.id);
+    const rp=await (async()=>{const b=await createImageBitmap(p.photo);const s=Math.min(1,1200/Math.max(b.width,b.height));const c=document.createElement('canvas');c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);
+      c.getContext('2d').drawImage(b,0,0,c.width,c.height);b.close&&b.close();return c.toDataURL('image/jpeg',.75)})();
+    points.push({...m,n:pointIndex(p),thumb:await blobToDataURL(p.thumb),photo:rp})}
+  const data=JSON.stringify({project:man.project,exported:man.exported,plans,sessions:man.sessions,points}).replace(/<\//g,'<\\/');
+  return `<!DOCTYPE html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(S.project.name)} – platsbesök</title>
+<style>body{margin:0;font:15px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:#1c1f24;background:#f3f4f6}header{padding:18px 20px 10px;background:#fff;border-bottom:1px solid #d9dce2}
+h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#6b7280}.bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;background:#fff;border-bottom:1px solid #d9dce2}
+.bar button,.bar select{font:inherit;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #d9dce2;background:#fff;cursor:pointer}.bar button.on{background:#1c1f24;color:#fff;border-color:#1c1f24}
+#wrap{position:relative;margin:16px 20px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12);display:inline-block;max-width:calc(100% - 40px)}#wrap img{display:block;max-width:100%;height:auto}
+.mk{position:absolute;width:0;height:0}.mk svg{position:absolute;left:-16px;top:-16px;width:32px;height:32px;overflow:visible;cursor:pointer}.mk circle{fill:#e8541f;stroke:#fff;stroke-width:2}.mk .w{fill:#e8541f;opacity:.45}.mk.old circle{fill:#4b5c72}.mk.old .w{fill:#4b5c72}
+.mk text{fill:#fff;font-size:9px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#list{padding:0 20px 40px}.sess{margin:18px 0 8px;font-weight:600}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:#fff;border:1px solid #d9dce2;border-radius:8px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit}.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.card div{padding:6px 8px;font-size:13px;color:#6b7280}
+.card b{color:#1c1f24}#lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;color:#fff}#lb.on{display:flex}
+#lb img{max-width:100%;max-height:75vh;border-radius:6px}#lb p{margin:10px 0 0;max-width:800px;text-align:center}</style></head><body>
+<header><h1>${esc(S.project.name)}</h1><p>Platsbesök – exporterat ${fmtTime(man.exported)}</p></header>
+<div class="bar" id="tabs"></div><div class="bar"><label>Visa besök: <select id="sel"></select></label></div>
+<div id="wrap"><img id="plan" alt=""><div id="mk"></div></div><div id="list"></div><div id="lb"><img id="lbimg" alt=""><p id="lbtxt"></p></div>
+<script>const D=${data};let cur=D.plans[0]&&D.plans[0].id,sess='all';const $=s=>document.querySelector(s);const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tabs(){$('#tabs').innerHTML=D.plans.map(p=>'<button class="'+(p.id===cur?'on':'')+'" data-id="'+p.id+'">'+E(p.name)+'</button>').join('');$('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.id;draw()});
+$('#sel').innerHTML='<option value="all">Alla</option>'+D.sessions.map(s=>'<option value="'+s.id+'">'+E(s.name)+'</option>').join('');$('#sel').onchange=e=>{sess=e.target.value;draw()}}
+function draw(){tabs();const p=D.plans.find(x=>x.id===cur);if(!p){$('#wrap').style.display='none';return}$('#plan').src=p.img;
+const pts=D.points.filter(x=>x.planId===p.id&&(sess==='all'||x.sessionId===sess));
+$('#mk').innerHTML=pts.map(x=>{const a=x.heading==null?null:(x.heading+(p.north||0))%360;return '<div class="mk'+(sess==='all'&&x.sessionId!==D.sessions[D.sessions.length-1].id?' old':'')+'" style="left:'+x.x*100+'%;top:'+x.y*100+'%"><svg viewBox="-16 -16 32 32" data-id="'+x.id+'">'+(a==null?'':'<path class="w" d="M0,0 L-8,-15 A17,17 0 0 1 8,-15 Z" transform="rotate('+a+')"/>')+'<circle r="7"/><text>'+x.n+'</text></svg></div>'}).join('');
+$('#mk').querySelectorAll('svg').forEach(s=>s.onclick=()=>show(s.dataset.id));
+const ss=sess==='all'?D.sessions:D.sessions.filter(s=>s.id===sess);$('#list').innerHTML=ss.map(s=>{const sp=D.points.filter(x=>x.sessionId===s.id);if(!sp.length)return '';
+return '<div class="sess">'+E(s.name)+' ('+sp.length+' foton)</div><div class="grid">'+sp.map(x=>{const pl=D.plans.find(q=>q.id===x.planId);return '<button class="card" data-id="'+x.id+'"><img src="'+x.thumb+'" alt=""><div><b>'+x.n+'</b> '+E(pl?pl.name:'')+(x.heading==null?'':' · '+x.heading+'°')+(x.note?'<br>'+E(x.note):'')+'</div></button>'}).join('')+'</div>'}).join('');
+$('#list').querySelectorAll('.card').forEach(c=>c.onclick=()=>show(c.dataset.id))}
+function show(id){const x=D.points.find(p=>p.id===id);const pl=D.plans.find(q=>q.id===x.planId),s=D.sessions.find(q=>q.id===x.sessionId);$('#lbimg').src=x.photo;
+$('#lbtxt').textContent='Foto '+x.n+' · '+(s?s.name:'')+' · '+(pl?pl.name:'')+' · '+new Date(x.created).toLocaleString('sv-SE')+(x.heading==null?'':' · '+x.heading+'°')+(x.note?' — '+x.note:'');$('#lb').classList.add('on')}
+$('#lb').onclick=()=>$('#lb').classList.remove('on');draw();<\/script></body></html>`}
+
+/* ---------- Import ---------- */
+async function importZip(file){busy(true);try{const zip=await JSZip.loadAsync(file);const mf=zip.file('projekt.json');if(!mf)throw new Error('projekt.json saknas');
+  const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok')throw new Error('Fel filtyp');
+  const id=uid(),map=new Map();const proj={id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj);
+  for(const f of man.files){const e=zip.file(f.path);if(!e)continue;const nid=uid();map.set(f.id,nid);await put('files',{id:nid,projectId:id,name:f.name,blob:await e.async('blob')})}
+  for(const p of man.plans){const nid=uid();map.set(p.id,nid);await put('plans',{id:nid,projectId:id,fileId:map.get(p.fileId),page:p.page,name:p.name,north:p.north||0,order:p.order??0})}
+  for(const s of man.sessions){const nid=uid();map.set(s.id,nid);await put('sessions',{id:nid,projectId:id,name:s.name,date:s.date,created:s.created})}
+  let n=0;for(const p of man.points){const e=zip.file(p.path);if(!e)continue;const full=await e.async('blob');const {thumb}=await processImage(full);
+    await put('points',{id:uid(),projectId:id,sessionId:map.get(p.sessionId),planId:map.get(p.planId),x:p.x,y:p.y,heading:p.heading,note:p.note||'',created:p.created,photo:full,thumb});n++}
+  toast(`Importerat: ${n} foton`);openProject(proj)}
+  catch(e){console.error(e);toast('Import misslyckades: '+e.message)}finally{busy(false)}}
+
+/* ---------- Start ---------- */
+openDB().then(showProjects).catch(e=>{console.error(e);alert('Kunde inte öppna lokal lagring: '+e.message)});
+navigator.storage&&navigator.storage.persist&&navigator.storage.persist();
+</script>
+</body>
+</html>
