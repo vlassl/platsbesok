@@ -1,1890 +1,684 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-<meta name="color-scheme" content="only light">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Hitta uteserveringen – i solen</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="ikon-192.png">
-<link rel="apple-touch-icon" href="ikon-180.png">
-<meta name="theme-color" content="#f2a71b">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Baloo+2:wght@600;800&family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>Platsbesök v0.6</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
-  --ink:#33281a; --bg:#fdf6e8; --card:#fffdf7;
-  --sun:#f7b32b; --sun-deep:#e09112; --sun-soft:#fbe3a8;
-  --shadow:#93a0b4; --night:#2c3a5c; --tree:#7db36a;
-  --line:#f0e3c6; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --ink:#1c1f24; --mute:#6b7280; --line:#d9dce2; --bg:#f3f4f6; --panel:#ffffff;
+  --mark:#e8541f; --mark-old:#4b5c72; --focus:#2563eb;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html{background:#fdf6e8 !important;color-scheme:only light;height:100%}
-@media (prefers-color-scheme:dark){html,body{background:#fdf6e8 !important;color:#33281a}}
-body{
-  font-family:'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink);
-  background:var(--bg);height:100%;display:flex;flex-direction:column;
-}
-header{
-  display:flex;align-items:center;gap:.55rem;padding:.55rem .9rem .45rem;
-  background:linear-gradient(100deg,#f7c948,#f2a71b);color:var(--ink);
-  box-shadow:0 2px 14px rgba(224,145,18,.25);z-index:2;
-}
-header .logo-sun{width:34px;height:34px;flex:0 0 auto}
-header h1{font-family:'Baloo 2',cursive;font-size:1.18rem;font-weight:800;line-height:1}
-header{position:relative}
-header .titles{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0;line-height:1}
-header .sub{font-family:'Caveat',cursive;font-size:1.26rem;font-weight:600;line-height:.85;
-  color:rgba(51,40,26,.55);margin-top:-.04rem;margin-left:.15rem}
-header .ver{position:absolute;top:.25rem;right:.55rem;font-size:.55rem;opacity:.55;
-  font-family:var(--mono);cursor:pointer;padding:.15rem .2rem}
-#map{height:44vh;min-height:260px;z-index:1}
-#panel{flex:1;overflow-y:auto;padding:.8rem .9rem 2rem;max-width:560px;width:100%;margin:0 auto}
-.hint{
-  font-size:.85rem;color:#8d7c5c;padding:.6rem .8rem;border:1.5px dashed var(--line);
-  border-radius:12px;background:var(--card);margin-bottom:.8rem;
-}
-.status{display:flex;align-items:center;gap:.6rem;margin:.3rem 0 .7rem;font-size:.95rem;min-height:1.6rem;flex-wrap:wrap}
-.status .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
-.status .big{font-weight:700;font-size:1.05rem}
-.status .meta{font-family:var(--mono);font-size:.7rem;color:#8d7c5c}
-.btn3d{
-  margin-left:auto;font-family:var(--mono);font-size:.68rem;font-weight:500;color:#8d7c5c;
-  border:1.5px solid var(--line);border-radius:8px;padding:.2rem .55rem;cursor:pointer;background:var(--card);
-}
-.btn3d:hover{border-color:var(--sun-deep);color:var(--sun-deep)}
-.card{
-  background:var(--card);border:1px solid var(--line);border-radius:16px;
-  padding:.75rem .85rem;margin-bottom:.75rem;box-shadow:0 3px 10px rgba(224,145,18,.08);
-}
-.card h2{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:#a08c66;font-weight:600;margin-bottom:.5rem}
-.controls{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.4rem}
-.controls label{font-size:.78rem;color:#8d7c5c}
-input[type=date]{font-family:var(--mono);font-size:.85rem;padding:.3rem .45rem;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
-input[type=number]{font-family:var(--mono);font-size:.85rem;width:4.2rem;padding:.3rem .4rem;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
-button{
-  font-family:inherit;font-size:.82rem;font-weight:600;padding:.42rem .8rem;
-  border-radius:10px;border:none;background:var(--ink);color:#fbe3a8;cursor:pointer;
-}
-button.ghost{background:transparent;border:1.5px solid var(--line);color:#8d7c5c}
-#bandwrap{position:relative;margin-top:.2rem}
-#dayband{width:100%;height:64px;border-radius:10px;display:block;cursor:crosshair;background:#eee}
-#bandlabels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.6rem;color:#d7c69c;margin-top:.2rem;padding:0 2px}
-input[type=range]{width:100%;margin-top:.5rem;accent-color:var(--sun-deep)}
-.venue.hl{outline:2.5px solid var(--sun-deep);outline-offset:1px;
-  box-shadow:0 4px 14px rgba(224,145,18,.35);transition:.15s}
-.piemark.hl{filter:drop-shadow(0 0 7px #e09112) drop-shadow(0 1px 3px rgba(0,0,0,.35));
-  transform:scale(1.25);transform-origin:center}
-.locbtn{background:#fff;width:34px;height:34px;border-radius:9px;border:2px solid rgba(51,40,26,.25);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;color:#2a6fbb;
-  box-shadow:0 1px 5px rgba(0,0,0,.3)}
-.locbtn:hover{color:#33281a}
-.locbtn.busy{opacity:.5}
-.ctlrow{display:flex;flex-wrap:nowrap;align-items:flex-end;gap:.4rem}
-.ctlrow .ctl{min-width:0;flex:1 1 auto}
-.ctlrow .ctl:first-child{flex:0 0 auto}
-.ctlrow .ctl:nth-child(2){flex:0 1 auto;min-width:4.3rem}    /* "2 h" behöver inte mycket */
-.ctlrow .ctl:nth-child(3){flex:1 1 0;min-width:5.4rem}       /* "≤ 10 min" ska rymmas helt */
-.ctlrow .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ctlrow .dur{width:100%;padding:.4rem 1.1rem .4rem .4rem;font-size:.76rem;
-  -webkit-appearance:none;appearance:none;text-overflow:clip;
-  background-image:linear-gradient(45deg,transparent 50%,#8d7c5c 50%),
-                   linear-gradient(135deg,#8d7c5c 50%,transparent 50%);
-  background-position:calc(100% - 12px) 52%, calc(100% - 7px) 52%;
-  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
-.ctlrow .bigchip{width:auto;justify-content:space-between;gap:.35rem;padding:.42rem .8ch;font-size:.78rem;
-  white-space:nowrap;overflow:hidden}
-.ctlrow .bigchip #whenLabel{white-space:nowrap;overflow:visible;text-overflow:clip;flex:0 0 auto}
-.ctlrow .bigchip .car{flex:0 0 auto;margin-left:.2rem}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.view{position:absolute;inset:0;display:flex;flex-direction:column}
 
-.sokbtn{flex:0 0 auto;align-self:flex-end;padding:.45rem .7rem}
-.chiprow{display:flex;flex-wrap:nowrap;gap:.3rem;overflow-x:auto;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.chiprow::-webkit-scrollbar{display:none}
-.chiprow .ci{width:13px;height:13px}
-.legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.72rem;margin-top:.55rem;color:#8d7c5c}
-.legend span{display:inline-flex;align-items:center;gap:.35rem}
-.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
-.intervals{font-family:var(--mono);font-size:.8rem;line-height:1.7}
-.intervals .sunrow{color:var(--sun-deep)}
-.intervals .treerow{color:#4e8a3d}
-.intervals .none{color:#a08c66}
-#yearchart{width:100%;height:120px;display:block}
-.datainfo{font-family:var(--mono);font-size:.7rem;color:#7a6a4d;line-height:1.6}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--sun-deep);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:.4rem}
-@keyframes sp{to{transform:rotate(360deg)}}
-.err{color:#b3402a;font-size:.82rem}
-/* ---- Uteserveringslista ---- */
-.ctl{display:flex;flex-direction:column;gap:.18rem}
-.lbl{font-size:.6rem;font-weight:600;color:#a08c66;text-transform:uppercase;letter-spacing:.06em}
-#listCard{position:relative}
-.venue.hl{outline:2.5px solid var(--sun-deep);outline-offset:1px;
-  box-shadow:0 4px 14px rgba(224,145,18,.35);transition:.15s}
-.piemark.hl{filter:drop-shadow(0 0 7px #e09112) drop-shadow(0 1px 3px rgba(0,0,0,.35));
-  transform:scale(1.25);transform-origin:center}
-.legend{display:flex;gap:.75rem;flex-wrap:wrap;font-size:.66rem;font-weight:600;color:#7a6a4d;margin:.5rem 0 .1rem}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:.25rem;
-  vertical-align:-1px;border:1px solid rgba(51,40,26,.25)}
-#listCard h2{display:flex;align-items:center;gap:.5rem}
-#listCard h2 .setbtn{margin-left:auto;width:30px;height:30px}
-.popover{display:none;position:absolute;z-index:30;top:4.4rem;left:.5rem;
-  background:#fff;border:1.5px solid var(--sun-deep);border-radius:12px;
-  padding:.7rem;box-shadow:0 8px 24px rgba(51,40,26,.18);
-  align-items:center;gap:.5rem;flex-wrap:wrap}
-.popover.open{display:flex}
-.popover input,.popover select{font-family:var(--mono);font-size:.85rem;padding:.32rem .45rem;
-  border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
-.okbtn{font-size:.8rem;font-weight:700;border:none;background:var(--sun-deep);
-  color:#fff;border-radius:9px;padding:.4rem .8rem;cursor:pointer}
-.nummark{background:#f7b32b;border:2px solid #33281a;border-radius:50%;
-  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
-  font-weight:700;font-size:.7rem;color:#33281a;font-family:'Bricolage Grotesque',sans-serif;
-  box-shadow:0 1px 4px rgba(0,0,0,.3)}
-#t3band{flex:1;height:16px;border-radius:5px;display:block;margin:0 9px .25rem}
-.ci{width:15px;height:15px;vertical-align:-3px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.ci.lg{width:19px;height:19px;vertical-align:-4px}
-.bigchip{font-family:var(--mono);font-size:.88rem;font-weight:500;white-space:nowrap;background:#fff;border:1.5px solid var(--sun-deep);
-  color:var(--ink);border-radius:11px;padding:.4rem .75rem;cursor:pointer;user-select:none;
-  display:inline-flex;align-items:center;gap:.35rem}
-.bigchip .car{font-size:.55rem;color:var(--sun-deep);transition:.2s}
-.bigchip.openp .car{transform:rotate(180deg)}
-.setbtn{background:#fff;border:1.5px solid var(--line);border-radius:11px;width:34px;height:34px;
-  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#8d7c5c}
-.setbtn.on{border-color:var(--sun-deep);color:var(--sun-deep)}
-.expander{max-height:0;overflow:hidden;transition:max-height .25s ease}
-.expander.open{max-height:150px}
-.expander#setExp.open{max-height:520px}
-.exinner{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;background:#fff;
-  border:1.5px dashed var(--line);border-radius:11px;padding:.55rem .65rem;margin:.5rem 0 .2rem;
-  font-size:.78rem;color:#7a6a4d}
-.exinner .nowbtn{font-size:.72rem;font-weight:600;border:none;background:var(--sun-soft);
-  color:var(--ink);border-radius:8px;padding:.32rem .6rem;cursor:pointer}
-.modes{display:flex;gap:.4rem;align-items:center;font-size:.76rem;color:#7a6a4d;width:100%;flex-wrap:wrap}
-.modebtn{display:inline-flex;align-items:center;gap:.3rem;font-size:.76rem;font-weight:600;
-  border:1.5px solid var(--line);background:#fff;color:#8d7c5c;border-radius:9px;padding:.3rem .55rem;cursor:pointer}
-.modebtn.on{background:var(--sun-soft);border-color:var(--sun);color:var(--ink)}
-.favbox{width:100%;border-top:1.5px dashed var(--line);margin-top:.55rem;padding-top:.55rem}
-.favbox h3{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#a08c66;margin-bottom:.4rem}
-.favlist{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.45rem}
-.favpill{display:inline-flex;align-items:center;gap:.3rem;font-size:.73rem;font-weight:600;
-  background:var(--sun-soft);border:1px solid var(--sun);border-radius:18px;padding:.2rem .5rem}
-.favpill b{cursor:pointer;color:#b3402a}
-.favlist .none{font-size:.7rem;color:#b3a17c}
-.favbox textarea{width:100%;font-family:var(--mono);font-size:.78rem;padding:.4rem .5rem;
-  border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);resize:vertical;min-height:52px}
-.favbox .addbtn{margin:.35rem .3rem 0 0;font-size:.75rem;font-weight:600;border:none;background:var(--ink);
-  color:#fbe3a8;border-radius:8px;padding:.35rem .65rem;cursor:pointer}
-.favbox .ghostbtn{background:transparent;border:1.5px solid var(--line);color:#8d7c5c}
-.favmsg{font-family:var(--mono);font-size:.66rem;margin-top:.3rem;line-height:1.6}
-.favmsg .hit{color:#3f8a4f}.favmsg .miss{color:#b3402a}
-.chip{display:inline-flex;align-items:center;gap:.22rem;font-size:.74rem;font-weight:600;
-  padding:.3rem .5rem;border-radius:18px;border:1.5px solid var(--line);background:var(--card);
-  cursor:pointer;user-select:none;color:#8d7c5c;white-space:nowrap;flex:0 0 auto}
-.chip.on{background:var(--sun-soft);color:var(--ink);border-color:var(--sun)}
-select.dur{font-family:var(--mono);font-size:.85rem;padding:.35rem .5rem;border:1.5px solid var(--line);
-  border-radius:10px;background:#fff;color:var(--ink)}
-.favsw{margin-left:auto;display:none;align-items:center;gap:.4rem;font-size:.72rem;color:#8d7c5c}
-.favsw.show{display:flex}
-.toggle{width:34px;height:20px;border-radius:11px;background:#e6d9b8;position:relative;cursor:pointer;transition:.15s}
-.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
-  background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.toggle.on{background:var(--sun-deep)}.toggle.on::after{left:16px}
-.venue{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  padding:.6rem .7rem .55rem;margin-bottom:.6rem}
-.vtop{display:flex;align-items:baseline;gap:.45rem}
-.rank{font-family:var(--mono);font-size:.68rem;color:#e2d3ab;min-width:1rem}
-.vname{font-weight:700;font-size:.95rem}
-.v3d{margin-left:auto;font-family:var(--mono);font-size:.6rem;font-weight:500;color:#8d7c5c;
-  border:1.5px solid var(--line);border-radius:7px;padding:.1rem .4rem;cursor:pointer;user-select:none}
-.v3d:hover{border-color:var(--sun-deep);color:var(--sun-deep)}
-.vheart{margin-left:.45rem;font-size:1.15rem;cursor:pointer;color:#eadfc4;line-height:1}
-.vheart.on{color:#e2574c}
-.vmeta{display:flex;gap:.55rem;flex-wrap:wrap;font-size:.7rem;color:#8d7c5c;margin:.15rem 0 .4rem;
-  padding-left:1.45rem;align-items:baseline}
-.vmeta a{color:#2a6fbb;text-decoration:none;font-weight:600;border-bottom:1px dashed #a8c6e6}
-.vmeta .ute{background:#e8f2e4;color:#3f8a4f;border-radius:5px;padding:.05rem .35rem;font-size:.66rem}
-.vmeta .uteq{background:#f3ede0;color:#a08c66;border-radius:5px;padding:.05rem .35rem;font-size:.66rem}
-.vmeta .oh{font-family:var(--mono);font-size:.66rem;font-weight:600;color:#7a6a4d}
-.bandrow{display:flex;align-items:center;gap:.55rem;padding-left:1.45rem}
-.miniband{flex:1 1 auto;min-width:0;height:24px;border-radius:6px;display:block}
-.sunscore{font-family:var(--mono);font-size:.82rem;font-weight:700;color:#c98a06;
-  white-space:nowrap;flex:0 0 auto;text-align:right;line-height:1.1}
-.sunscore .tr{display:block;color:#4f8f3f;font-weight:700;font-size:.74rem;line-height:1.05}
+/* --- Projektlista --- */
+#viewProjects{padding:calc(var(--sat) + 20px) 20px 20px;max-width:640px;margin:0 auto;width:100%;overflow:auto}
+#viewProjects h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px}
+#viewProjects .sub{color:var(--mute);margin:0 0 24px}
+.plist{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.pitem{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:14px 16px;text-align:left;width:100%;min-height:60px}
+.pitem b{font-weight:600;display:block}.pitem small{color:var(--mute)}
+.pitem .chev{color:var(--mute);font-size:20px}
+.empty{color:var(--mute);padding:28px 0;text-align:center;border:1px dashed var(--line);border-radius:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:9px;
+  background:var(--panel);border:1px solid var(--line);font-weight:500;white-space:nowrap}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.accent{background:var(--mark);color:#fff;border-color:var(--mark)}
+.btn.danger{color:#b91c1c;border-color:#f3c5c5}
+.btn.icon{width:44px;padding:0;font-size:20px}
+.btn.sm{min-height:34px;padding:0 10px;font-size:14px}
+.btn:disabled{opacity:.45}
 
-.bandhours{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.58rem;
-  font-weight:600;color:#8d7c5c;padding-left:1.45rem;margin-top:.1rem;padding-right:3.4rem}
-/* ---- 3D-vy ---- */
-#t3overlay{display:none;position:fixed;inset:0;z-index:50;background:rgba(51,40,26,.55);align-items:center;justify-content:center;padding:.8rem}
-.t3box{background:var(--card);border-radius:16px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.35)}
-.t3head{display:flex;align-items:center;gap:.5rem;padding:.55rem .8rem;border-bottom:1px solid var(--line)}
-.t3head .nm{font-weight:700;font-size:.95rem}
-.t3head .b3{font-size:.55rem;font-family:var(--mono);background:#3f8a4f;color:#fdf6e8;padding:.1rem .45rem;border-radius:12px}
-.t3head .x{margin-left:auto;font-size:1.3rem;cursor:pointer;color:#8d7c5c;line-height:1;padding:.1rem .3rem}
-#t3wrap{position:relative;width:100%;aspect-ratio:1/1;background:#cfe0ee;touch-action:none}
-#t3wrap canvas{display:block;width:100%;height:100%}
-.t3hint{position:absolute;bottom:.4rem;left:.6rem;font-family:var(--mono);font-size:.58rem;color:rgba(51,40,26,.55);pointer-events:none}
-.t3foot{display:flex;flex-direction:column;gap:.15rem;padding:.5rem .8rem .65rem}
-.t3row{display:flex;align-items:center;gap:.6rem;width:100%}
-.t3bandrow{display:flex;align-items:center;gap:.6rem;width:100%}
-.t3bandrow .spacer{visibility:hidden;font-family:var(--mono);font-size:.85rem}
-.t3foot input[type=range]{flex:1;margin:0}
-.t3foot .tlbl{font-family:var(--mono);font-size:.8rem;min-width:3.2rem;text-align:right}
-.t3err{padding:2rem;text-align:center;color:#b3402a;font-size:.85rem}
-@media(min-width:900px){ #map{height:50vh} }
+/* --- Projektvy --- */
+#top{display:flex;align-items:center;gap:8px;padding:calc(var(--sat) + 8px) 10px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+#top .title{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sessBar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#sessBar select{flex:1;min-width:0;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff}
+#plans{display:flex;gap:5px;padding:6px 10px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
+#plans::-webkit-scrollbar{display:none}
+.ptab{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;flex:0 0 auto;min-height:30px;padding:0 10px;
+  border-radius:7px;border:1px solid var(--line);background:#fff;font-weight:500;font-size:13px;color:var(--mute)}
+.ptab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#vp{flex:1;position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;user-select:none;-webkit-user-select:none}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#planCanvas{display:block;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+#markers{position:absolute;inset:0}
+.marker{position:absolute;width:0;height:0;overflow:visible}
+.marker svg{position:absolute;left:-24px;top:-24px;width:48px;height:48px;transform:scale(var(--inv,1));transform-origin:center;overflow:visible}
+.marker .wedge{fill:var(--mark);opacity:.45}
+.marker circle.dot{fill:var(--mark);stroke:#fff;stroke-width:2}
+.marker text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.marker .cbadge{fill:#fff;stroke:var(--mark);stroke-width:1.5}
+.marker text.cnt{fill:var(--ink);font-size:8px}
+.marker.old .wedge{fill:var(--mark-old)}.marker.old circle.dot{fill:var(--mark-old)}.marker.old .cbadge{stroke:var(--mark-old)}
+.marker.pending circle.dot{fill:#fff;stroke:var(--mark);stroke-width:3}.marker.pending .wedge{display:none}
+#northOv{position:absolute;inset:0;touch-action:none;cursor:grab;z-index:5}
+#northSvg{position:absolute;left:50%;top:50%;width:min(60vw,60vh);height:min(60vw,60vh);transform:translate(-50%,-50%);opacity:.5;overflow:visible;pointer-events:none}
+#northG{stroke:var(--mark);stroke-width:5;stroke-linecap:round;fill:var(--mark)}
+#northG text{stroke:none;font-weight:700;font-size:24px;text-anchor:middle;dominant-baseline:central;font-family:inherit}
+#vp .hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(28,31,36,.9);color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;pointer-events:none;white-space:nowrap}
+#vp .emptyPlan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mute);padding:20px;text-align:center}
+#tools{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:row;gap:8px}
+#tools .btn{box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#compass{position:absolute;left:12px;bottom:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;min-height:44px;padding:0 12px;
+  display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:14px}
+#compass .needle{display:inline-block;width:16px;height:16px;transition:transform .15s}
+#strip{display:flex;gap:8px;padding:8px 10px calc(var(--sab) + 8px);overflow-x:auto;background:var(--panel);border-top:1px solid var(--line);min-height:96px;align-items:center}
+#strip .th{flex:0 0 auto;width:72px;height:72px;border-radius:8px;overflow:hidden;position:relative;background:#e5e7eb;border:2px solid transparent}
+#strip .th.on{border-color:var(--mark)}
+#strip .th img{width:100%;height:100%;object-fit:cover;display:block}
+#strip .th b{position:absolute;left:4px;top:4px;background:var(--mark);color:#fff;font-size:11px;padding:1px 6px;border-radius:10px}
+#strip .th i{position:absolute;right:4px;bottom:4px;background:rgba(28,31,36,.85);color:#fff;font-style:normal;font-size:11px;padding:1px 6px;border-radius:10px}
+#strip .none{color:var(--mute);font-size:14px;padding:0 6px}
+
+/* --- Ritläge --- */
+#draw{position:absolute;inset:0;z-index:40;background:#101214;display:flex;flex-direction:column}
+#drawBar{display:flex;gap:6px;padding:calc(var(--sat) + 8px) 10px 8px;background:#1c1f24;align-items:center;overflow-x:auto;flex:0 0 auto}
+#drawBar .btn{background:#2a2f36;border-color:#3a4048;color:#fff}
+#drawBar .btn.primary{background:var(--mark);border-color:var(--mark)}
+.dcol{width:36px;min-height:36px;border-radius:50%;border:3px solid transparent;flex:0 0 auto}
+.dcol.on{border-color:#fff}
+#drawWrap{flex:1;position:relative;overflow:hidden;touch-action:none}
+#drawWrap canvas{position:absolute}
+#dFg{cursor:crosshair}
+
+/* --- Sheet / modal --- */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:14px 14px 0 0;
+  padding:14px 16px calc(var(--sab) + 14px);box-shadow:0 -6px 24px rgba(0,0,0,.15);z-index:20}
+.sheet h3{margin:0 0 6px;font-size:17px;font-weight:600}
+.sheet p{margin:0 0 12px;color:var(--mute);font-size:14px}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.overlay{align-items:center}.overlay .modal{border-radius:14px;max-width:560px;width:calc(100% - 40px);max-height:90vh}}
+.modal{background:var(--panel);width:100%;max-height:92vh;border-radius:14px 14px 0 0;overflow:auto;padding:16px 16px calc(var(--sab) + 16px)}
+.modal h3{margin:0 0 10px;font-size:18px;font-weight:600}
+.shot{border:1px solid var(--line);border-radius:10px;padding:8px;margin:10px 0}
+.shot img{width:100%;border-radius:8px;display:block;background:#e5e7eb;max-height:45vh;object-fit:contain}
+.meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--mute);font-size:14px;margin:8px 0}
+.field{margin:10px 0}.field label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.field textarea{min-height:70px;resize:vertical}
+.modal .row{margin-top:10px}
+#toast{position:absolute;left:50%;bottom:calc(var(--sab) + 110px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:20px;
+  font-size:14px;z-index:50;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
+#busy{position:absolute;inset:0;background:rgba(255,255,255,.7);z-index:60;display:flex;align-items:center;justify-content:center;font-weight:500}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <symbol id="i-logosun" viewBox="0 0 64 64">
-      <g stroke="#33281a" stroke-width="2.6" stroke-linecap="round">
-        <line x1="32" y1="3"  x2="32" y2="12"/>
-        <line x1="49" y1="8.5"  x2="44.5" y2="16"/>
-        <line x1="60" y1="21" x2="51.5" y2="25"/>
-        <line x1="61.5" y1="37" x2="52.5" y2="36"/>
-        <line x1="24" y1="61.5" x2="25.5" y2="53"/>
-        <line x1="9"  y1="52.5" x2="16.5" y2="46.5"/>
-        <line x1="2.5" y1="36" x2="11.5" y2="35.5"/>
-        <line x1="4.5" y1="20" x2="13"  y2="24"/>
-        <line x1="15" y1="7.5" x2="20"  y2="15"/>
-      </g>
-      <circle cx="32" cy="33" r="14.5" fill="#f7b32b" stroke="#33281a" stroke-width="2.6"/>
-      <g fill="#33281a" stroke="#33281a" stroke-width="1.6" stroke-linecap="round">
-        <rect x="21" y="26.5" width="9.2" height="7" rx="3.2"/>
-        <rect x="33.8" y="26.5" width="9.2" height="7" rx="3.2"/>
-        <line x1="30.2" y1="29.5" x2="33.8" y2="29.5" fill="none"/>
-        <line x1="21" y1="29" x2="17.8" y2="27.5" fill="none"/>
-        <line x1="43" y1="29" x2="46.2" y2="27.5" fill="none"/>
-        <path d="M23 28.6 q1.6 -1 3.2 -0.2" fill="none" stroke="#fdf6e8" stroke-width="1.1" opacity=".85"/>
-      </g>
-      <path d="M25 39.5 Q28.5 42.5 33 40.6" fill="none" stroke="#33281a" stroke-width="2.2" stroke-linecap="round"/>
-      <g stroke="#33281a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="41.5" y="47" width="10.5" height="9.5" rx="1.8" fill="#fffdf7"/>
-        <path d="M52 49.5h2.4a2.4 2.4 0 0 1 0 4.8H52" fill="none"/>
-        <path d="M44.5 44.5c0-1.6 1.3-1.9 1.3-3.4M48.2 44.5c0-1.6 1.3-1.9 1.3-3.4" fill="none" stroke-width="1.5"/>
-      </g>
-    </symbol>
-    <symbol id="i-coffee" viewBox="0 0 24 24">
-      <path d="M4 10h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/>
-      <path d="M16 11h2.5a2.5 2.5 0 0 1 0 5H16"/>
-      <path d="M8 7c0-1.2 1-1.4 1-2.6M12 7c0-1.2 1-1.4 1-2.6"/>
-    </symbol>
-    <symbol id="i-beer" viewBox="0 0 24 24">
-      <path d="M6 9v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 16 19V9"/>
-      <path d="M16 11h2a2 2 0 0 1 0 4.5h-2"/>
-      <path d="M5.5 9c-.8-1.6.4-3.2 2-3 .3-1.8 2.4-2.6 3.8-1.5 1-1.3 3.2-1 3.8.5 1.7-.2 2.7 1.7 1.6 3z"/>
-      <line x1="9.5" y1="12" x2="9.5" y2="18"/><line x1="12.5" y1="12" x2="12.5" y2="18"/>
-    </symbol>
-    <symbol id="i-food" viewBox="0 0 24 24">
-      <path d="M7 3v5a2 2 0 0 0 4 0V3M9 10v11"/>
-      <path d="M16 3c-1.5 1-2 3-2 5.5 0 2 .8 3 2 3v9.5M16 3v18"/>
-    </symbol>
-    <symbol id="i-walk" viewBox="0 0 24 24">
-      <path fill="currentColor" stroke="none" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
-    </symbol>
-    <symbol id="i-wine" viewBox="0 0 24 24">
-      <path d="M8 3h8l-.7 6.5a3.3 3.3 0 0 1-6.6 0z"/>
-      <line x1="12" y1="13" x2="12" y2="20"/><line x1="8.5" y1="21" x2="15.5" y2="21"/>
-    </symbol>
-    <symbol id="i-drink" viewBox="0 0 24 24">
-      <path d="M4 4h16l-8 9z"/>
-      <line x1="12" y1="13" x2="12" y2="20"/><line x1="8.5" y1="21" x2="15.5" y2="21"/>
-      <circle cx="14.5" cy="7" r="1.4"/>
-    </symbol>
-    <symbol id="i-bike" viewBox="0 0 24 24">
-      <circle cx="6" cy="16.5" r="3.6"/><circle cx="18" cy="16.5" r="3.6"/>
-      <path d="M6 16.5l4-7h5.5M13 16.5l-3-7M14.5 6.5h2.5l1.5 10"/>
-    </symbol>
-    <symbol id="i-bus" viewBox="0 0 24 24">
-      <rect x="5" y="4" width="14" height="13" rx="2.5"/>
-      <line x1="5" y1="10.5" x2="19" y2="10.5"/>
-      <circle cx="8.7" cy="14" r=".9"/><circle cx="15.3" cy="14" r=".9"/>
-      <line x1="8" y1="17.5" x2="7" y2="20"/><line x1="16" y1="17.5" x2="17" y2="20"/>
-    </symbol>
-    <symbol id="i-gear" viewBox="0 0 24 24">
-      <path fill="currentColor" stroke="none" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
-    </symbol>
-  </defs>
-</svg>
-
-<header>
-  <svg class="logo-sun"><use href="#i-logosun"/></svg>
-  <div class="titles">
-    <h1>Hitta uteserveringen</h1>
-    <span class="sub">i solen</span>
+<!-- Projektlista -->
+<div id="viewProjects" class="view">
+  <h1>Platsbesök</h1>
+  <p class="sub">Foton kopplade till punkter på planritningar.</p>
+  <div id="plist" class="plist"></div>
+  <div class="row">
+    <button class="btn primary" id="btnNewProject">Nytt projekt</button>
+    <button class="btn" id="btnImport">Öppna / lägg till zip</button>
   </div>
-  <span class="ver" id="verTag">v0.44</span>
-</header>
+  <p class="sub" style="margin-top:28px;font-size:13px">Allt sparas lokalt i den här webbläsaren. Zip-filer med samma projekt sammanfogas vid import — inget skrivs över. Foton sparas i originalkvalitet. v0.6</p>
+</div>
 
-<div id="map"></div>
-
-<div id="panel">
-  <div class="hint" id="hint">
-    Klicka på kartan där uteserveringen ligger. Skuggan från hus, terräng och träd
-    beräknas för hela dagen.
+<!-- Projektvy -->
+<div id="viewProject" class="view hidden">
+  <div id="top">
+    <button class="btn icon" id="btnBack" aria-label="Tillbaka">‹</button>
+    <div class="title" id="projTitle"></div>
+    <button class="btn" id="btnExport">Exportera</button>
+    <button class="btn icon" id="btnProjMenu" aria-label="Projektmeny">⋯</button>
   </div>
-
-  <div class="card" id="listCard">
-    <h2>Soliga uteserveringar nära kartans mitt<span class="setbtn" id="setBtn" title="Inställningar"><svg class="ci lg"><use href="#i-gear"/></svg></span></h2>
-    <div class="controls ctlrow">
-      <span class="ctl"><span class="lbl">När?</span>
-        <span class="bigchip" id="whenChip"><span id="whenLabel">Nu</span><span class="car">▼</span></span></span>
-      <span class="ctl"><span class="lbl">Hur länge?</span>
-        <select class="dur" id="listDur"></select></span>
-      <span class="ctl"><span class="lbl" id="travelLbl">Gångtid</span>
-        <select class="dur" id="maxTravel"></select></span>
-      <button id="listBtn" class="sokbtn">Sök</button>
-    </div>
-    <div class="popover" id="whenExp">
-      <input type="date" id="listDate">
-      <select id="listFrom" class="dur"></select>
-      <button class="nowbtn" id="nowBtn">↺ Nu</button>
-      <button class="okbtn" id="whenOk">OK</button>
-    </div>
-    <div class="expander" id="setExp">
-      <div class="exinner">
-        <div class="modes">
-          Restid som:
-          <span class="modebtn on" data-tmode="walk"><svg class="ci"><use href="#i-walk"/></svg>Gång</span>
-          <span class="modebtn" data-tmode="bike"><svg class="ci"><use href="#i-bike"/></svg>Cykel</span>
-          <span class="modebtn" data-tmode="transit"><svg class="ci"><use href="#i-bus"/></svg>Kollektivt</span>
-        </div>
-        <div class="favbox">
-          <h3>Favoriter</h3>
-          <div class="favlist" id="favList"></div>
-          <textarea id="favInput" placeholder="Lägg till flera: skriv ställen, ett per rad …"></textarea>
-          <button class="addbtn" id="favAdd">Matcha &amp; lägg till</button>
-          <button class="addbtn ghostbtn" id="favExport">Exportera till rutan</button>
-          <div class="favmsg" id="favMsg"></div>
-        </div>
-      </div>
-    </div>
-    <div class="controls chiprow" style="margin-top:.4rem">
-      <span class="chip on" data-cat="coffee"><svg class="ci"><use href="#i-coffee"/></svg>Kaffe</span>
-      <span class="chip on" data-cat="beer"><svg class="ci"><use href="#i-beer"/></svg>Öl</span>
-      <span class="chip on" data-cat="wine"><svg class="ci"><use href="#i-wine"/></svg>Vin</span>
-      <span class="chip on" data-cat="drinks"><svg class="ci"><use href="#i-drink"/></svg>Drink</span>
-      <span class="chip on" data-cat="food"><svg class="ci"><use href="#i-food"/></svg>Mat</span>
-    </div>
-    <div class="controls" style="margin-top:.3rem">
-      <span class="favsw" id="favSw">Bara favoriter <span class="toggle" id="favTgl"></span></span>
-    </div>
-    <div class="legend" id="legend" style="display:none">
-      <span><i style="background:#f7b32b"></i>sol</span>
-      <span><i style="background:#7db36a"></i>halvskugga (träd)</span>
-      <span><i style="background:#93a0b4"></i>skugga</span>
-      <span><i style="background:#2c3a5c"></i>natt</span>
-    </div>
-    <div class="datainfo" id="listInfo"></div>
-    <div id="venueList"></div>
+  <div id="sessBar">
+    <select id="sessSel" aria-label="Platsbesök"></select>
+    <button class="btn" id="btnNewSess">Nytt besök</button>
+    <button class="btn icon" id="btnSessMenu" aria-label="Besöksmeny">⋯</button>
   </div>
-
-  <div class="status" id="status" style="display:none">
-    <span class="dot" id="statusDot"></span>
-    <span class="big" id="statusText"></span>
-    <span class="meta" id="statusMeta"></span>
-    <span class="btn3d" id="btn3d" style="display:none">3D-vy</span>
-  </div>
-
-  <div class="card" id="dayCard" style="display:none">
-    <h2>Solbandet · <span id="bandDate"></span></h2>
-    <div class="controls"><label>Datum <input type="date" id="dateInput"></label></div>
-    <div id="bandwrap">
-      <canvas id="dayband" height="64"></canvas>
-      <div id="bandlabels"></div>
+  <div id="plans"></div>
+  <div id="vp">
+    <div id="world">
+      <canvas id="planCanvas"></canvas>
+      <div id="markers"></div>
     </div>
-    <input type="range" id="timeSlider" min="0" max="1439" value="720" step="5">
-    <div class="legend" id="legend" style="display:none">
-      <span><i style="background:var(--sun)"></i> Full sol</span>
-      <span><i style="background:var(--tree)"></i> Silad sol (träd)</span>
-      <span><i style="background:var(--shadow)"></i> Skugga (hus/terräng)</span>
-      <span><i style="background:var(--night)"></i> Natt</span>
+    <div id="northOv" class="hidden"><svg id="northSvg" viewBox="-50 -50 100 100"><g id="northG"><line x1="0" y1="44" x2="0" y2="-30"/><path d="M0,-46 L-10,-26 L0,-32 L10,-26 Z"/><circle r="4"/><text y="14">N</text></g></svg></div>
+    <div id="emptyPlan" class="emptyPlan hidden">
+      <div>Inga planritningar ännu.</div>
+      <button class="btn primary" id="btnAddPdf0">Lägg till PDF</button>
+    </div>
+    <div id="hint" class="hint hidden">Tryck på planen där fotot tas</div>
+    <div id="compass" class="hidden"><span class="needle">▲</span><span id="compassVal">–</span></div>
+    <div id="tools">
+      <button class="btn icon" id="btnPlanMenu" aria-label="Planinställningar">⚙</button>
+      <button class="btn icon" id="btnFit" aria-label="Anpassa vy">⤢</button>
+      <button class="btn accent" id="btnAddMode">＋ Ny punkt</button>
     </div>
   </div>
+  <div id="strip"></div>
 
-  <div class="card" id="intCard" style="display:none">
-    <h2>Solintervall</h2>
-    <div class="intervals" id="intervals"></div>
-  </div>
-
-  <div class="card" id="yearCard" style="display:none">
-    <h2>Årsöversikt · soltimmar per dag (den 15:e varje månad)</h2>
-    <canvas id="yearchart" height="120"></canvas>
-  </div>
-
-  <div class="card" id="setCard" style="display:none">
-    <h2>Inställningar</h2>
-    <div class="controls">
-      <label>Räckvidd <input type="number" id="radiusInput" value="600" min="100" max="1200" step="50"> m</label>
-      <label id="defHLabel">Standardhöjd hus <input type="number" id="defHInput" value="20" min="3" max="60" step="1"> m</label>
-      <button class="ghost" id="recalcBtn">Räkna om</button>
+  <div id="northSheet" class="sheet hidden">
+    <h3>Ställ in norr</h3>
+    <p>Dra i pilen så den pekar mot norr på ritningen. Nu: <b id="northVal">0°</b></p>
+    <div class="row">
+      <button class="btn" id="nM">−1°</button><button class="btn" id="nP">+1°</button><button class="btn" id="nQ">+90°</button>
+      <button class="btn primary" id="btnNorthSave">Spara</button><button class="btn" id="btnNorthCancel">Avbryt</button>
     </div>
-    <div class="datainfo" id="datainfo"></div>
+  </div>
+  <div id="pendSheet" class="sheet hidden">
+    <h3>Punkt placerad</h3>
+    <p>Rikta iPaden åt fotohållet och tryck Ta foto. Riktning: <span id="pendHeading">okänd</span></p>
+    <div class="row">
+      <button class="btn accent" id="btnShoot">Ta foto</button>
+      <button class="btn" id="btnPick">Välj bild</button>
+      <button class="btn" id="btnPendCancel">Avbryt</button>
+    </div>
   </div>
 </div>
 
-<div id="t3overlay">
-  <div class="t3box">
-    <div class="t3head">
-      <span class="nm">3D-vy</span>
-      <span class="x" id="t3close">×</span>
-    </div>
-    <div id="t3wrap"><span class="t3hint" id="t3hint">dra = snurra · hjul/nyp = zooma · klick på marken = flytta parasollet</span></div>
-    <div class="t3foot">
-      <div class="t3bandrow">
-        <canvas id="t3band" height="16"></canvas>
-        <span class="spacer tlbl" id="t3spacer">00:00</span>
-      </div>
-      <div class="t3row">
-        <input type="range" id="t3time" min="6" max="22" step="0.25">
-        <span class="tlbl" id="t3tlbl"></span>
-      </div>
-    </div>
+<!-- Ritläge -->
+<div id="draw" class="hidden">
+  <div id="drawBar">
+    <button class="dcol on" data-c="#e8341f" style="background:#e8341f" aria-label="Röd"></button>
+    <button class="dcol" data-c="#ffd60a" style="background:#ffd60a" aria-label="Gul"></button>
+    <button class="dcol" data-c="#2563eb" style="background:#2563eb" aria-label="Blå"></button>
+    <button class="dcol" data-c="#ffffff" style="background:#fff" aria-label="Vit"></button>
+    <button class="btn sm" id="dWidth">Medel</button>
+    <button class="btn sm" id="dUndo">Ångra</button>
+    <button class="btn sm" id="dClear">Rensa allt</button>
+    <span style="flex:1"></span>
+    <button class="btn sm" id="dCancel">Avbryt</button>
+    <button class="btn sm primary" id="dSave">Spara</button>
   </div>
+  <div id="drawWrap"><canvas id="dBg"></canvas><canvas id="dFg"></canvas></div>
 </div>
+
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="filePick" accept="image/*" class="hidden">
+<input type="file" id="filePdf" accept="application/pdf" multiple class="hidden">
+<input type="file" id="fileZip" accept=".zip,application/zip" class="hidden">
+
+<div id="modalHost"></div>
+<div id="toast"></div>
+<div id="busy" class="hidden">Arbetar…</div>
 
 <script>
-"use strict";
-/* ================ HITTA UTESERVERINGEN v0.44 ================
-   Läge A (laser): ray marching mot höjdtiles (tiles/, från
-   preprocess.py) + 3D-vy som bygger mesh ur samma tiles.
-   Läge B (fallback): OSM via Overpass.
-============================================================ */
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-const EYE = 1.1, AZBINS = 360, STEP_MIN = 5;
-const TREE_TRANS = [0.85,0.85,0.80,0.55,0.25,0.12,0.10,0.10,0.18,0.45,0.70,0.80];
+/* ---------- Hjälp ---------- */
+const $=s=>document.querySelector(s);
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeName=s=>String(s).normalize('NFC').replace(/[^\wåäöÅÄÖ.-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60)||'x';
+const today=()=>new Date().toISOString().slice(0,10);
+const fmtTime=iso=>new Date(iso).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'});
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2400)}
+function busy(on){$('#busy').classList.toggle('hidden',!on)}
+const blobToDataURL=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});
+const ext=b=>({'image/png':'png','image/heic':'heic','image/heif':'heif','image/webp':'webp'}[b.type]||'jpg');
+const shotBlob=sh=>sh.anno||sh.blob;
 
-let map, marker=null, sunRay=null, bldLayer, treeLayer;
-let P=null, dayData=null, lastEN=null;
-let mode='osm';
-let horB=new Float32Array(AZBINS);
-let horT=new Float32Array(AZBINS);
-let treeBins=[];
-let buildings=[], trees=[];
+/* ---------- IndexedDB ---------- */
+let db;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('platsbesok',1);
+  r.onupgradeneeded=e=>{const d=e.target.result;
+    for(const s of ['projects','files','plans','sessions','points']){const st=d.createObjectStore(s,{keyPath:'id'});
+      if(s!=='projects')st.createIndex('projectId','projectId');if(s==='points')st.createIndex('sessionId','sessionId')}};
+  r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error)})}
+function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);const req=fn(t.objectStore(store));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error)})}
+const put=(s,o)=>tx(s,'readwrite',st=>st.put(o));
+const del=(s,id)=>tx(s,'readwrite',st=>st.delete(id));
+const getAll=s=>tx(s,'readonly',st=>st.getAll());
+const byProject=(s,pid)=>tx(s,'readonly',st=>st.index('projectId').getAll(pid));
 
-/* ---------- Solposition ---------- */
-const rad=Math.PI/180;
-const toDays=d=>d.valueOf()/864e5-0.5+2440588-2451545;
-const eob=rad*23.4397;
-function sunPos(date,lat,lng){
-  const lw=rad*-lng, phi=rad*lat, d=toDays(date);
-  const M=rad*(357.5291+0.98560028*d);
-  const C=rad*(1.9148*Math.sin(M)+0.02*Math.sin(2*M)+0.0003*Math.sin(3*M));
-  const L=M+C+rad*102.9372+Math.PI;
-  const dec=Math.asin(Math.sin(eob)*Math.sin(L));
-  const ra=Math.atan2(Math.sin(L)*Math.cos(eob),Math.cos(L));
-  const H=rad*(280.16+360.9856235*d)-lw-ra;
-  const alt=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(H));
-  const az=Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(phi)-Math.tan(dec)*Math.cos(phi));
-  return {altDeg:alt/rad, azDeg:(az/rad+180+360)%360};
-}
+/* ---------- State ---------- */
+const S={project:null,files:[],plans:[],sessions:[],points:[],planId:null,sessionId:null,mode:'view',pending:null,showAll:true};
+const V={z:1,px:0,py:0};
+const pdfCache=new Map(), canvasCache=new Map();
+let lastHeading=null, compassOn=false, capturedHeading=null, addTarget=null;
 
-/* ---------- WGS84 → SWEREF99 TM ---------- */
-function fromSweref(E,N){
-  const a=6378137,fl=1/298.257222101,e2=fl*(2-fl),n=fl/(2-fl);
-  const ah=a/(1+n)*(1+n*n/4+n**4/64),k0=0.9996,FE=500000,lon0=15*rad;
-  const xi=(N)/(k0*ah), eta=(E-FE)/(k0*ah);
-  const d1=n/2-2*n*n/3+37*n**3/96-n**4/360, d2=n*n/48+n**3/15-437*n**4/1440;
-  const d3=17*n**3/480-37*n**4/840, d4=4397*n**4/161280;
-  const xip=xi-d1*Math.sin(2*xi)*Math.cosh(2*eta)-d2*Math.sin(4*xi)*Math.cosh(4*eta)
-             -d3*Math.sin(6*xi)*Math.cosh(6*eta)-d4*Math.sin(8*xi)*Math.cosh(8*eta);
-  const etap=eta-d1*Math.cos(2*xi)*Math.sinh(2*eta)-d2*Math.cos(4*xi)*Math.sinh(4*eta)
-              -d3*Math.cos(6*xi)*Math.sinh(6*eta)-d4*Math.cos(8*xi)*Math.sinh(8*eta);
-  const phiS=Math.asin(Math.sin(xip)/Math.cosh(etap));
-  const dl=Math.atan2(Math.sinh(etap),Math.cos(xip));
-  const A2=e2+e2*e2+e2**3+e2**4, B2=-(7*e2*e2+17*e2**3+30*e2**4)/6;
-  const C2=(224*e2**3+889*e2**4)/120, D2=-(4279*e2**4)/1260;
-  const si=Math.sin(phiS);
-  const phi=phiS+si*Math.cos(phiS)*(A2+B2*si*si+C2*si**4+D2*si**6);
-  return {lat:phi/rad, lng:(lon0+dl)/rad};
+/* ---------- Projektlista ---------- */
+async function showProjects(){
+  $('#viewProject').classList.add('hidden');$('#viewProjects').classList.remove('hidden');
+  const ps=(await getAll('projects')).sort((a,b)=>b.created.localeCompare(a.created));
+  const el=$('#plist');el.innerHTML='';
+  if(!ps.length){el.innerHTML='<div class="empty">Inga projekt. Skapa ett nytt eller öppna en zip.</div>';return}
+  for(const p of ps){const b=document.createElement('button');b.className='pitem';
+    b.innerHTML=`<span><b>${esc(p.name)}</b><small>Skapat ${p.created.slice(0,10)}</small></span><span class="chev">›</span>`;
+    b.onclick=()=>openProject(p);el.appendChild(b)}
 }
-function toSweref(lat,lon){
-  const a=6378137, f=1/298.257222101, e2=f*(2-f), n=f/(2-f);
-  const ah=a/(1+n)*(1+n*n/4+n**4/64), k0=0.9996, FE=500000, lon0=15*rad;
-  const A=e2, B=(5*e2**2-e2**3)/6, C=(104*e2**3-45*e2**4)/120, D=1237*e2**4/1260;
-  const phi=lat*rad, si=Math.sin(phi);
-  const ps=phi - si*Math.cos(phi)*(A+B*si*si+C*si**4+D*si**6);
-  const dl=lon*rad-lon0;
-  const xi=Math.atan2(Math.tan(ps),Math.cos(dl));
-  const eta=Math.atanh(Math.cos(ps)*Math.sin(dl));
-  const b1=n/2-2*n*n/3+5*n**3/16+41*n**4/180, b2=13*n*n/48-3*n**3/5+557*n**4/1440;
-  const b3=61*n**3/240-103*n**4/140, b4=49561*n**4/161280;
-  const N=k0*ah*(xi+b1*Math.sin(2*xi)*Math.cosh(2*eta)+b2*Math.sin(4*xi)*Math.cosh(4*eta)
-        +b3*Math.sin(6*xi)*Math.cosh(6*eta)+b4*Math.sin(8*xi)*Math.cosh(8*eta));
-  const E=k0*ah*(eta+b1*Math.cos(2*xi)*Math.sinh(2*eta)+b2*Math.cos(4*xi)*Math.sinh(4*eta)
-        +b3*Math.cos(6*xi)*Math.sinh(6*eta)+b4*Math.cos(8*xi)*Math.sinh(8*eta))+FE;
-  return {E,N};
-}
+$('#btnNewProject').onclick=async()=>{const name=prompt('Projektnamn:');if(!name)return;const p={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',p);openProject(p)};
+$('#btnImport').onclick=()=>$('#fileZip').click();
+$('#fileZip').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await importZip(f)};
 
-/* ---------- Höjdtiles ---------- */
-const DEM={ok:false,size:512,fmt:1,keys:new Set(),cache:new Map(),vegSource:''};
-const OV={ok:false};
-function sampleO(E,N){
-  if(!OV.ok) return null;
-  const c=Math.floor((E-OV.e0)/OV.res), r=Math.floor((OV.n1-N)/OV.res);
-  if(c<0||r<0||c>=OV.w||r>=OV.h) return null;
-  const i=(r*OV.w+c)*4, v=OV.data[i]*256+OV.data[i+1];
-  return v===0?null:v/10-100;
+/* ---------- Projektvy ---------- */
+async function openProject(p){
+  S.project=p;$('#projTitle').textContent=p.name;
+  $('#viewProjects').classList.add('hidden');$('#viewProject').classList.remove('hidden');
+  await loadProject();
+  if(!S.sessions.length)await newSession(true);
+  S.sessionId=S.sessions[S.sessions.length-1].id;
+  S.planId=S.plans[0]?.id||null;
+  renderSessions();renderPlans();await showPlan();renderStrip();
 }
-async function loadIndex(){
-  try{
-    const r=await fetch('tiles/index.json');
-    if(!r.ok) throw 0;
-    const idx=await r.json();
-    DEM.size=idx.tileSize;DEM.vegSource=idx.vegSource||'';DEM.fmt=idx.fmt||1;
-    if(idx.oversikt){
-      const o=idx.oversikt;
-      const img=new Image();
-      img.onload=()=>{
-        const c=document.createElement('canvas');
-        c.width=o.w;c.height=o.h;
-        const cx=c.getContext('2d');cx.drawImage(img,0,0);
-        OV.data=cx.getImageData(0,0,o.w,o.h).data;
-        Object.assign(OV,{ok:true,e0:o.e0,n1:o.n1,res:o.res,w:o.w,h:o.h});
-      };
-      img.src='tiles/oversikt.png';
-    }
-    // täckningsrektanglar (grupperade per sammanhängande låda vore lyx - enkel hull räcker)
-    try{
-      let e0=1e12,e1=-1e12,n0=1e12,n1=-1e12;
-      for(const k of idx.tiles){const [e,n]=k.split('_').map(Number);
-        e0=Math.min(e0,e);e1=Math.max(e1,e+idx.tileSize);
-        n0=Math.min(n0,n);n1=Math.max(n1,n+idx.tileSize);}
-      const sw=fromSweref(e0,n0), ne=fromSweref(e1,n1);
-      L.rectangle([[sw.lat,sw.lng],[ne.lat,ne.lng]],
-        {color:'#e09112',weight:1.5,dashArray:'4 4',fill:false,interactive:false}).addTo(map);
-    }catch(_){}
-    idx.tiles.forEach(k=>DEM.keys.add(k));
-    DEM.ok=DEM.keys.size>0;
-  }catch(_){DEM.ok=false;}
-  mode=DEM.ok?'laser':'osm';
-  document.getElementById('defHLabel').style.display=DEM.ok?'none':'';
+async function loadProject(){const pid=S.project.id;
+  [S.files,S.plans,S.sessions,S.points]=await Promise.all([byProject('files',pid),byProject('plans',pid),byProject('sessions',pid),byProject('points',pid)]);
+  S.plans.sort((a,b)=>(a.order??0)-(b.order??0)||a.name.localeCompare(b.name));
+  S.sessions.sort((a,b)=>a.created.localeCompare(b.created));
+  S.points.sort((a,b)=>a.created.localeCompare(b.created));
+  const cnt={};for(const x of S.sessions){if(x.seq==null){cnt[x.date]=(cnt[x.date]||0)+1;x.seq=cnt[x.date];x.label=x.name&&x.name!==x.date?x.name:'';await put('sessions',x)}else cnt[x.date]=Math.max(cnt[x.date]||0,x.seq)}
+  for(const p of S.points){if(!p.photos){p.photos=[{id:uid(),blob:p.photo,thumb:p.thumb,heading:p.heading??null,created:p.created}];delete p.photo;delete p.thumb;delete p.heading;await put('points',p)}}
 }
-function loadImg(src){
-  return new Promise(res=>{
-    const img=new Image();
-    img.onload=()=>{
-      const c=document.createElement('canvas');
-      c.width=c.height=DEM.size;
-      const cx=c.getContext('2d');
-      cx.drawImage(img,0,0);
-      res(cx.getImageData(0,0,DEM.size,DEM.size).data);
-    };
-    img.onerror=()=>res(null);
-    img.src=src;
-  });
-}
-function loadTile(key){
-  if(DEM.cache.has(key)) return DEM.cache.get(key);
-  const p=(async()=>{
-    if(!DEM.keys.has(key)) return null;
-    const [d,b]=await Promise.all([
-      loadImg('tiles/'+key+'.png'),
-      loadImg('tiles/'+key+'_bas.png')   // saknas i äldre tiles -> null -> bas 0
-    ]);
-    return d?{d,b}:null;
-  })();
-  DEM.cache.set(key,p);
-  return p;
-}
-let grid=null;
-async function ensureTiles(E,N,R){
-  const S=DEM.size,t={};
-  for(let te=Math.floor((E-R)/S)*S;te<=E+R;te+=S)
-    for(let tn=Math.floor((N-R)/S)*S;tn<=N+R;tn+=S)
-      t[te+'_'+tn]=loadTile(te+'_'+tn);
-  const entries=await Promise.all(Object.entries(t).map(async([k,v])=>[k,await v]));
-  grid=new Map(entries);
-  return entries.filter(e=>e[1]).length;
-}
-function sample(E,N){
-  const S=DEM.size;
-  const te=Math.floor(E/S)*S, tn=Math.floor(N/S)*S;
-  const t=grid.get(te+'_'+tn);
-  if(!t) return null;
-  const px=Math.floor(E)-te, py=(tn+S-1)-Math.floor(N);
-  const i=(py*S+px)*4, v=t.d[i]*256+t.d[i+1];
-  if(v===0) return null;
-  const hard=v/10-100;
-  const top=hard+t.d[i+2]*0.5;
-  const bas=hard+(t.b?t.b[i]*0.5:0);
-  const isB=DEM.fmt>=2 && t.b && t.b[i+1]>127;
-  const ground=isB ? hard-t.b[i+2]*0.5 : hard;
-  return [hard, top, bas, isB, ground];
-}
-function horizonAt(E,N,R){
-  const base=sample(E,N);
-  if(!base) return null;
-  const eyeAbs=base[0]+EYE;
-  const hB=new Float32Array(AZBINS).fill(-90);
-  const vegIv=Array.from({length:AZBINS},()=>[]);
-  for(let az=0;az<AZBINS;az++){
-    const dE=Math.sin(az*rad), dN=Math.cos(az*rad);
-    let mb=-90;
-    const raw=[];
-    for(let d=2;d<=R;d+=d<60?1:d<200?2:4){
-      const s=sample(E+dE*d,N+dN*d);
-      if(!s) continue;
-      const eb=Math.atan2(s[0]-eyeAbs,d)/rad;
-      if(eb>mb) mb=eb;
-      if(s[1]>s[0]+0.4){
-        const et=Math.atan2(s[1]-eyeAbs,d)/rad;
-        const eBas=Math.max(-90, Math.atan2(s[2]-eyeAbs,d)/rad);
-        if(et>eBas) raw.push([eBas,et]);
-      }
-    }
-    if(OV.ok){
-      let d2=R*1.06;
-      while(d2<30000){
-        const g=sampleO(E+dE*d2,N+dN*d2);
-        if(g!=null){
-          const eb=Math.atan2(g-eyeAbs,d2)/rad;
-          if(eb>mb) mb=eb;
-        }
-        d2*=1.06;
-      }
-    }
-    hB[az]=mb;
-    // slå ihop överlappande intervall, kapa småglipor < 0.7 grader
-    raw.sort((a,b)=>a[0]-b[0]);
-    const mg=[];
-    for(const iv of raw){
-      const last=mg[mg.length-1];
-      if(last && iv[0]<=last[1]+0.7) last[1]=Math.max(last[1],iv[1]);
-      else mg.push([iv[0],iv[1]]);
-    }
-    vegIv[az]=mg;
-  }
-  return {hB,vegIv};
-}
-let vegIvG=null;
-function buildHorizonDem(E,N,R){
-  const h=horizonAt(E,N,R);
-  if(!h) throw new Error('Här finns ingen höjddata ännu – panorera mot ett täckt område (gula rutan i kartans hörn visar täckningen). Fler områden kommer!');
-  horB=h.hB;vegIvG=h.vegIv;
-}
+$('#btnBack').onclick=()=>{setMode('view');showProjects()};
 
-/* ---------- Overpass med failover mellan speglar ---------- */
-const OVERPASS_URLS=[
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter'
-];
-async function overpass(q){
-  let lastErr=null;
-  for(const url of OVERPASS_URLS){
-    try{
-      const resp=await fetch(url,{method:'POST',
-        body:'data='+encodeURIComponent(q),
-        headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-      if(resp.ok) return resp.json();
-      lastErr=new Error('Overpass svarade '+resp.status);
-      if(resp.status<500&&resp.status!==429) throw lastErr; // 4xx: ingen idé att byta spegel
-    }catch(e){ lastErr=e; }
-  }
-  throw lastErr||new Error('Overpass onåbar');
-}
-
-/* ---------- OSM-fallback ---------- */
-async function fetchOsm(lat,lng,r){
-  const q=`[out:json][timeout:40];(way["building"](around:${r},${lat},${lng});relation["building"]["type"="multipolygon"](around:${r},${lat},${lng});node["natural"="tree"](around:${r},${lat},${lng});way["natural"="tree_row"](around:${r},${lat},${lng}););out body geom;`;
-  return overpass(q);
-}
-const makeLocal=(lat0,lng0)=>{const kx=111320*Math.cos(lat0*rad),ky=110540;
-  return (lat,lng)=>[(lng-lng0)*kx,(lat-lat0)*ky];};
-function parseHeight(t,defH){
-  if(!t) return defH;
-  let h=parseFloat(String(t.height||'').replace(',','.'));
-  if(isFinite(h)&&h>0) return h;
-  const lv=parseFloat(t['building:levels']);
-  return (isFinite(lv)&&lv>0)?lv*3.1+1.5:defH;
-}
-function parseTree(t){
-  let h=parseFloat(t&&t.height)||12, cr=(parseFloat(t&&t.diameter_crown)||8)/2;
-  return {h,cr:Math.min(cr,h*0.45)};
-}
-function ingest(osm,defH){
-  buildings=[];trees=[];
-  for(const el of osm.elements){
-    if(el.tags&&el.tags.building&&el.geometry)
-      buildings.push({pts:el.geometry.map(g=>[g.lat,g.lon]),h:parseHeight(el.tags,defH),
-        tagged:!!(el.tags.height||el.tags['building:levels'])});
-    else if(el.type==='relation'&&el.members)
-      for(const m of el.members) if(m.role==='outer'&&m.geometry)
-        buildings.push({pts:m.geometry.map(g=>[g.lat,g.lon]),h:parseHeight(el.tags,defH),
-          tagged:!!(el.tags&&(el.tags.height||el.tags['building:levels']))});
-    else if(el.type==='node'&&el.tags&&el.tags.natural==='tree')
-      trees.push({lat:el.lat,lon:el.lon,...parseTree(el.tags)});
-    else if(el.tags&&el.tags.natural==='tree_row'&&el.geometry){
-      const t=parseTree(el.tags),g=el.geometry;
-      for(let i=0;i<g.length-1;i++){
-        const toX=makeLocal(g[i].lat,g[i].lon);
-        const [dx,dy]=toX(g[i+1].lat,g[i+1].lon);
-        const n=Math.max(1,Math.round(Math.hypot(dx,dy)/8));
-        for(let k=0;k<=n;k++) trees.push({lat:g[i].lat+(g[i+1].lat-g[i].lat)*k/n,
-          lon:g[i].lon+(g[i+1].lon-g[i].lon)*k/n,...t});
-      }
-    }
-  }
-}
-function buildHorizonOsm(){
-  horB.fill(-90);
-  treeBins=Array.from({length:AZBINS},()=>[]);
-  const toXY=makeLocal(P.lat,P.lng);
-  for(const b of buildings){
-    const xy=b.pts.map(p=>toXY(p[0],p[1]));
-    for(let i=0;i<xy.length-1;i++){
-      const [x1,y1]=xy[i],[x2,y2]=xy[i+1];
-      const n=Math.max(1,Math.ceil(Math.hypot(x2-x1,y2-y1)/2));
-      for(let k=0;k<=n;k++){
-        const x=x1+(x2-x1)*k/n,y=y1+(y2-y1)*k/n,d=Math.hypot(x,y);
-        if(d<1.5) continue;
-        const bin=Math.floor(((Math.atan2(x,y)/rad)+360)%360)%AZBINS;
-        const el=Math.atan2(b.h-EYE,d)/rad;
-        if(el>horB[bin]) horB[bin]=el;
-      }
-    }
-  }
-  const sm=Float32Array.from(horB);
-  for(let i=0;i<AZBINS;i++){
-    const a=horB[(i+AZBINS-1)%AZBINS],c=horB[(i+1)%AZBINS];
-    if(horB[i]<Math.min(a,c)-15) sm[i]=Math.min(a,c);
-  }
-  horB=sm;
-  for(const t of trees){
-    const [x,y]=toXY(t.lat,t.lon),d=Math.hypot(x,y);
-    if(d<1||d>300) continue;
-    const azC=((Math.atan2(x,y)/rad)+360)%360, hc=t.h-t.cr;
-    const half=Math.atan2(t.cr,d)/rad;
-    const top=Math.atan2(hc-EYE,d)/rad+half, bot=Math.max(0.3,Math.atan2(hc-EYE,d)/rad-half);
-    for(let bb=Math.floor(azC-half);bb<=Math.ceil(azC+half);bb++)
-      treeBins[((bb%AZBINS)+AZBINS)%AZBINS].push({bot,top});
-  }
-}
-
-/* ---------- Klassning ---------- */
-function classify(date){
-  const s=sunPos(date,P.lat,P.lng);
-  if(s.altDeg<=0.3) return {c:'night',s};
-  const bin=Math.floor(s.azDeg)%AZBINS;
-  if(s.altDeg<=horB[bin]) return {c:'shadow',s};
-  if(mode==='laser'){
-    if(vegIvG) for(const iv of vegIvG[bin])
-      if(s.altDeg>=iv[0]&&s.altDeg<=iv[1]) return {c:'tree',s};
-  } else {
-    for(const iv of treeBins[bin])
-      if(s.altDeg>=iv.bot&&s.altDeg<=iv.top) return {c:'tree',s};
-  }
-  return {c:'sun',s};
-}
-function computeDay(ds){
-  const res=[];
-  for(let m=0;m<1440;m+=STEP_MIN){
-    const d=new Date(ds+'T00:00:00');d.setMinutes(m);
-    res.push(classify(d).c);
-  }
-  return res;
-}
-
-/* ---------- Rendering ---------- */
-const COLORS={sun:'#f7b32b',tree:'#7db36a',shadow:'#93a0b4',night:'#2c3a5c'};
-const LABELS={sun:'Full sol',tree:'Silad sol genom träd',shadow:'Skugga (hus/terräng)',night:'Natt'};
-function drawBand(){
-  const cv=document.getElementById('dayband');
-  const w=cv.clientWidth||600;
-  cv.width=w*devicePixelRatio;cv.height=64*devicePixelRatio;
-  const cx=cv.getContext('2d');cx.scale(devicePixelRatio,devicePixelRatio);
-  const n=dayData.length,pw=w/n;
-  for(let i=0;i<n;i++){cx.fillStyle=COLORS[dayData[i]];cx.fillRect(i*pw,0,pw+.6,64);}
-  cx.fillStyle='rgba(255,255,255,.35)';
-  for(let h=1;h<24;h++){const x=(h*60/STEP_MIN)*pw;cx.fillRect(x,0,1,h%3===0?64:10);}
-  const mins=+document.getElementById('timeSlider').value;
-  const x=(mins/STEP_MIN)*pw;
-  cx.strokeStyle='#33281a';cx.lineWidth=2;
-  cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,64);cx.stroke();
-  cx.fillStyle='#33281a';cx.beginPath();cx.arc(x,6,4,0,7);cx.fill();
-  const lbl=document.getElementById('bandlabels');
-  if(!lbl.hasChildNodes())
-    lbl.innerHTML=[0,3,6,9,12,15,18,21,24].map(h=>`<span>${String(h).padStart(2,'0')}</span>`).join('');
-}
-const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
-const fmtH=h=>String(Math.floor(h)).padStart(2,'0')+':'+(h%1?String(Math.round(h%1*60)).padStart(2,'0'):'00');
-function listIntervals(){
-  const out={sun:[],tree:[]};
-  for(const key of ['sun','tree']){
-    let st=-1;
-    for(let i=0;i<=dayData.length;i++){
-      const on=i<dayData.length&&dayData[i]===key;
-      if(on&&st<0) st=i;
-      if(!on&&st>=0){out[key].push([st*STEP_MIN,i*STEP_MIN]);st=-1;}
-    }
-  }
-  const month=new Date(document.getElementById('dateInput').value).getMonth();
-  const tr=Math.round((1-TREE_TRANS[month])*100);
-  const sunMin=out.sun.reduce((a,[s,e])=>a+e-s,0), treeMin=out.tree.reduce((a,[s,e])=>a+e-s,0);
-  let html=out.sun.length
-    ?`<div class="sunrow">☀ <b>Full sol ${(sunMin/60).toFixed(1)} h:</b> ${out.sun.map(([s,e])=>fmt(s)+'–'+fmt(e)).join(', ')}</div>`
-    :`<div class="none">☀ Ingen full sol denna dag.</div>`;
-  if(out.tree.length)
-    html+=`<div class="treerow">☘ <b>Silad sol ${(treeMin/60).toFixed(1)} h</b> (krona skuggar ~${tr}% i ${['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'][month]}): ${out.tree.map(([s,e])=>fmt(s)+'–'+fmt(e)).join(', ')}</div>`;
-  document.getElementById('intervals').innerHTML=html;
-}
-function drawYear(){
-  const cv=document.getElementById('yearchart');
-  const w=cv.clientWidth||600;
-  cv.width=w*devicePixelRatio;cv.height=120*devicePixelRatio;
-  const cx=cv.getContext('2d');cx.scale(devicePixelRatio,devicePixelRatio);
-  const yr=new Date().getFullYear(),names=['J','F','M','A','M','J','J','A','S','O','N','D'],bw=w/12;
-  let maxH=1,data=[];
-  for(let mo=0;mo<12;mo++){
-    const arr=computeDay(`${yr}-${String(mo+1).padStart(2,'0')}-15`);
-    const sun=arr.filter(c=>c==='sun').length*STEP_MIN/60;
-    const tree=arr.filter(c=>c==='tree').length*STEP_MIN/60;
-    data.push([sun,tree]);maxH=Math.max(maxH,sun+tree);
-  }
-  cx.font='10px IBM Plex Mono, monospace';cx.textAlign='center';
-  for(let mo=0;mo<12;mo++){
-    const [sun,tree]=data[mo],hs=sun/maxH*88,ht=tree/maxH*88;
-    const x=mo*bw+bw*.18,ww=bw*.64;
-    cx.fillStyle=COLORS.tree;cx.fillRect(x,100-hs-ht,ww,ht);
-    cx.fillStyle=COLORS.sun;cx.fillRect(x,100-hs,ww,hs);
-    cx.fillStyle='#a08c66';cx.fillText(names[mo],mo*bw+bw/2,114);
-    if(sun+tree>.2)cx.fillText((sun+tree).toFixed(0),mo*bw+bw/2,96-hs-ht);
-  }
-}
-function updateStatus(){
-  const mins=+document.getElementById('timeSlider').value;
-  const d=new Date(document.getElementById('dateInput').value+'T00:00:00');
-  d.setMinutes(mins);
-  const r=classify(d);
-  document.getElementById('status').style.display='flex';
-  document.getElementById('statusDot').style.background=COLORS[r.c];
-  document.getElementById('statusText').textContent=fmt(mins)+' · '+LABELS[r.c];
-  document.getElementById('statusMeta').textContent=
-    r.s.altDeg>0?`solhöjd ${r.s.altDeg.toFixed(0)}° · azimut ${r.s.azDeg.toFixed(0)}°`:'solen under horisonten';
-  if(sunRay){map.removeLayer(sunRay);sunRay=null;}
-  if(marker)marker.setStyle({fillColor:COLORS[r.c]});
-  if(r.s.altDeg>0){
-    const len=.0018;
-    const lat2=P.lat+Math.cos(r.s.azDeg*rad)*len;
-    const lng2=P.lng+Math.sin(r.s.azDeg*rad)*len/Math.cos(P.lat*rad);
-    sunRay=L.polyline([[P.lat,P.lng],[lat2,lng2]],
-      {color:r.c==='sun'?'#f7b32b':'#93a0b4',weight:3,dashArray:'6 5',opacity:.9}).addTo(map);
-  }
-}
-function drawGeometry(){
-  bldLayer.clearLayers();treeLayer.clearLayers();
-  if(mode!=='osm') return;
-  for(const b of buildings)
-    L.polygon(b.pts,{color:'#a08c66',weight:1,fillColor:b.tagged?'#c9b892':'#e6dbbd',
-      fillOpacity:.45,interactive:false}).addTo(bldLayer);
-  for(const t of trees)
-    L.circleMarker([t.lat,t.lon],{radius:3,color:'#4e8a3d',fillColor:'#7db36a',
-      fillOpacity:.8,weight:1,interactive:false}).addTo(treeLayer);
-}
-
-/* ---------- Flöde ---------- */
-async function startAnalysis(refetch){
-  const hint=document.getElementById('hint');
-  if(!P) return;
-  if(marker)map.removeLayer(marker);
-  marker=L.circleMarker([P.lat,P.lng],{radius:9,color:'#33281a',weight:2,
-    fillColor:'#f7b32b',fillOpacity:1}).addTo(map);
-  const R=+document.getElementById('radiusInput').value||600;
-  try{
-    let info='';
-    if(mode==='laser'){
-      hint.style.display='block';
-      hint.innerHTML='<span class="spin"></span>Laddar höjdtiles …';
-      const {E,N}=toSweref(P.lat,P.lng);
-      const nt=await ensureTiles(E,N,R);
-      if(!nt) throw new Error('Här finns ingen höjddata ännu – panorera mot ett täckt område (gula rutan i kartans hörn visar täckningen). Fler områden kommer!');
-      hint.innerHTML='<span class="spin"></span>Ray marching, 360 riktningar …';
-      await new Promise(r=>setTimeout(r,20));
-      buildHorizonDem(E,N,R);
-      lastEN={E,N};
-      document.getElementById('btn3d').style.display='';
-      info=`källa: laserraster (${nt} tiles à 512 m) · vegetation: ${DEM.vegSource} · räckvidd ${R} m`;
-    } else {
-      if(refetch){
-        hint.style.display='block';
-        hint.innerHTML='<span class="spin"></span>Hämtar byggnader och träd från OpenStreetMap …';
-        ingest(await fetchOsm(P.lat,P.lng,R),+document.getElementById('defHInput').value||20);
-        drawGeometry();
-      } else {
-        const defH=+document.getElementById('defHInput').value||20;
-        for(const b of buildings) if(!b.tagged) b.h=defH;
-      }
-      hint.innerHTML='<span class="spin"></span>Bygger horisontprofil …';
-      await new Promise(r=>setTimeout(r,20));
-      buildHorizonOsm();
-      const nT=buildings.filter(b=>b.tagged).length;
-      info=`källa: OSM · ${buildings.length} byggnader (${nT} med höjddata) · ${trees.length} träd · platt mark antas`;
-    }
-    recomputeDay();
-    drawYear();
-    hint.style.display='none';
-    for(const id of ['dayCard','intCard','yearCard','setCard'])
-      document.getElementById(id).style.display='block';
-    document.getElementById('legend').style.display='flex';
-    document.getElementById('datainfo').innerHTML=
-      info+` · punkt ${P.lat.toFixed(5)}, ${P.lng.toFixed(5)} · ögonhöjd ${EYE} m · © OpenStreetMap, Lantmäteriet, Stockholms stad`;
-  }catch(err){
-    hint.style.display='block';
-    hint.innerHTML=`<span class="err">Fel: ${err.message}.</span>`;
-  }
-}
-function recomputeDay(){
-  const ds=document.getElementById('dateInput').value;
-  document.getElementById('bandDate').textContent=ds;
-  dayData=computeDay(ds);
-  drawBand();listIntervals();updateStatus();
-}
-
-/* ================ 3D-vy ur höjdtiles ================ */
-const T3SZ=240;  // sidlängd i meter/vertexar
-let T3=null, t3pos=null, T3marker=null;
-let t3anim=null;
-function bandFor3d(){
-  if(t3pos.venue) return t3pos.venue.band;
-  const band=new Uint8Array(64);
-  const base=new Date(t3pos.dateStr+'T00:00:00');
-  for(let q2=0;q2<64;q2++){
-    const d=new Date(base); d.setMinutes(6*60+q2*15);
-    const r=classify(d);
-    band[q2]=r.c==='night'?3:r.c==='shadow'?0:r.c==='tree'?1:2;
-  }
-  return band;
-}
-function drawT3band(){
-  const cv=document.getElementById('t3band');
-  if(!cv||!t3pos||!t3pos.band) return;
-  const w=cv.clientWidth||300;
-  cv.width=w*devicePixelRatio; cv.height=16*devicePixelRatio;
-  const cx=cv.getContext('2d'); cx.scale(devicePixelRatio,devicePixelRatio);
-  const cols={0:'#93a0b4',1:'#7db36a',2:'#f7b32b',3:'#2c3a5c'};
-  const pw=w/64, Hb=16;
-  for(let q2=0;q2<64;q2++){cx.fillStyle=cols[t3pos.band[q2]];cx.fillRect(q2*pw,0,pw+.5,Hb);}
-  // Trim-ram runt valt intervall (samma stil som listans kort)
-  if(t3pos.animF!=null && (t3pos.animT-t3pos.animF)<15.9){
-    const xa=(t3pos.animF-6)*4*pw, xb=(t3pos.animT-6)*4*pw, LW=2.5;
-    cx.strokeStyle='#33281a'; cx.lineWidth=LW;
-    cx.strokeRect(xa+LW/2, LW/2, Math.max(LW,xb-xa-LW), Hb-LW);
-    cx.fillStyle='#33281a';
-    const ar=4;
-    cx.beginPath();
-    cx.moveTo(xa+LW, Hb/2-ar); cx.lineTo(xa+LW+ar*0.75, Hb/2); cx.lineTo(xa+LW, Hb/2+ar);
-    cx.closePath(); cx.fill();
-    cx.beginPath();
-    cx.moveTo(xb-LW, Hb/2-ar); cx.lineTo(xb-LW-ar*0.75, Hb/2); cx.lineTo(xb-LW, Hb/2+ar);
-    cx.closePath(); cx.fill();
-  }
-  // Solmarkör: vit kärna med mörk kant så den syns mot alla bandfärger
-  const h=+document.getElementById('t3time').value;
-  const x=(h-6)*4*pw;
-  cx.strokeStyle='#fdf6e8';cx.lineWidth=3.5;
-  cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,Hb);cx.stroke();
-  cx.strokeStyle='#33281a';cx.lineWidth=1.6;
-  cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,Hb);cx.stroke();
-}
-function startT3Anim(f,t){
-  stopT3Anim();
-  const span=Math.max(0.5,t-f), LOOP=6000;   // 6 s per varv
-  const t0=performance.now();
-  function tick(now){
-    const frac=((now-t0)%LOOP)/LOOP;
-    document.getElementById('t3time').value=(f+frac*span).toFixed(2);
-    updSun3();
-    t3anim=requestAnimationFrame(tick);
-  }
-  t3anim=requestAnimationFrame(tick);
-}
-function stopT3Anim(){
-  if(t3anim){cancelAnimationFrame(t3anim);t3anim=null;}
-}
-function open3dAt(E,N,lat,lng,title,venue){
-  if(!grid) return;
-  t3pos={E,N,lat,lng,venue:venue||null,
-         dateStr: venue? listDateStr : document.getElementById('dateInput').value};
-  document.querySelector('#t3overlay .nm').textContent=title||'3D-vy';
-  document.getElementById('t3overlay').style.display='flex';
-  if(!window.THREE){
-    document.getElementById('t3wrap').innerHTML='<div class="t3err">Three.js kunde inte laddas – kör sidan online.</div>';
-    return;
-  }
-  const mins=+document.getElementById('timeSlider').value;
-  const sl=document.getElementById('t3time');
-  sl.value=Math.min(22,Math.max(6,Math.round(mins/15)/4));
-  t3pos.band=bandFor3d();
-  let f=6,t=22;
-  if(t3pos.venue){ const p=listPeriod(); f=Math.max(6,p[0]); t=Math.min(22,p[1]); }
-  t3pos.animF=f; t3pos.animT=t;
-  build3d();
-  updSun3();
-  startT3Anim(f,t);      // loopar solståndet; stoppas när man drar i listen
-}
-function close3d(){
-  stopT3Anim();
-  document.getElementById('t3overlay').style.display='none';
-  if(T3){cancelAnimationFrame(T3.raf);T3.renderer.dispose();
-    T3.renderer.domElement.remove();T3=null;}
-}
-function loadOrtoTexture(E,N){
-  return new Promise(res=>{
-    const S=DEM.size, half=T3SZ/2, PX=2;      // 0,5 m/px
-    const keys=[];
-    for(let te=Math.floor((E-half)/S)*S; te<=E+half; te+=S)
-      for(let tn=Math.floor((N-half)/S)*S; tn<=N+half; tn+=S)
-        keys.push([te,tn]);
-    let pend=keys.length, any=false;
-    const cv=document.createElement('canvas');
-    cv.width=cv.height=T3SZ*PX;
-    const cx=cv.getContext('2d');
-    keys.forEach(([te,tn])=>{
-      const img=new Image();
-      img.onload=()=>{
-        any=true;
-        // källbild täcker [te,te+S)x[tn,tn+S), rad 0 = norr, 2 px/m
-        const dx=(te-(E-half))*PX, dy=((N+half)-(tn+S))*PX;
-        cx.drawImage(img,0,0,S*PX,S*PX,dx,dy,S*PX,S*PX);
-        if(--pend===0) done();
-      };
-      img.onerror=()=>{ if(--pend===0) done(); };
-      img.src='tiles/tex_'+te+'_'+tn+'.jpg';
-    });
-    function done(){
-      if(!any) return res(null);
-      const tex=new THREE.CanvasTexture(cv);
-      tex.anisotropy=4;
-      res(tex);
-    }
-  });
-}
-function build3d(){
-  if(T3){cancelAnimationFrame(T3.raf);T3.renderer.dispose();T3.renderer.domElement.remove();}
-  const wrap=document.getElementById('t3wrap');
-  const W=wrap.clientWidth,H=wrap.clientHeight||W;
-  const renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(W,H);renderer.setPixelRatio(Math.min(2,devicePixelRatio));
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  wrap.appendChild(renderer.domElement);
-  const scene=new THREE.Scene();
-  const cam=new THREE.PerspectiveCamera(50,W/H,1,40000);
-  const {E,N}=t3pos;
-  const half=T3SZ/2;
-
-  // Basnivå = marknivån vid P
-  const base=sample(E,N);
-  const z0=base?base[4]:0;
-
-  // Terräng = MARK (byggnader lyfts ut som egna boxar för skarpa väggar)
-  const geo=new THREE.PlaneGeometry(T3SZ,T3SZ,T3SZ-1,T3SZ-1);
-  geo.rotateX(-Math.PI/2);          // +x=öst, -z=norr
-  const pos=geo.attributes.position;
-  const vegPix=[], bldPix=[];
-  for(let iy=0;iy<T3SZ;iy++){       // rad 0 = norr
-    for(let ix=0;ix<T3SZ;ix++){
-      const e=E-half+ix+0.5, n=N+half-iy-0.5;
-      const s=sample(e,n);
-      const g=s?s[4]-z0:0;
-      pos.setY(iy*T3SZ+ix,g);
-      if(!s) continue;
-      if(s[3] && s[0]-s[4]>=2)
-        bldPix.push([ix-half+0.5, g, iy-half+0.5, s[0]-s[4]]);
-      if(s[1]>s[0]+0.5)
-        vegPix.push([ix-half+0.5, s[2]-z0, iy-half+0.5, s[1]-s[2]]);
-    }
-  }
-  geo.computeVertexNormals();
-  scene.fog=new THREE.Fog(0xd9e4f0, 3500, 30000);
-  // Fjärrterräng: grov mark ur översiktslagret (24x24 km), utan skuggor
-  if(OV.ok){
-    const FAR=24000, FN=160;
-    const fg=new THREE.PlaneGeometry(FAR,FAR,FN,FN);
-    fg.rotateX(-Math.PI/2);
-    const fp=fg.attributes.position;
-    for(let iy=0;iy<=FN;iy++){
-      for(let ix=0;ix<=FN;ix++){
-        const vx=-FAR/2+ix*(FAR/FN), vz=-FAR/2+iy*(FAR/FN);
-        const g=sampleO(E+vx, N-vz);
-        fp.setY(iy*(FN+1)+ix, (g==null?0:g)-z0-1.5);
-      }
-    }
-    fg.computeVertexNormals();
-    const far=new THREE.Mesh(fg,new THREE.MeshLambertMaterial({color:0xccc0a2}));
-    far.receiveShadow=false; far.castShadow=false;
-    scene.add(far);
-  }
-  const tmat=new THREE.MeshLambertMaterial({color:0xd9cdb4});
-  // Ortotextur om tex_<key>.jpg finns (draperas över terräng OCH tak saknar - taken förblir enfärgade boxar)
-  loadOrtoTexture(E,N).then(tex=>{ if(tex&&T3){ tmat.map=tex; tmat.color.set(0xffffff); tmat.needsUpdate=true; } });
-  const terr=new THREE.Mesh(geo,tmat);
-  terr.castShadow=terr.receiveShadow=true;
-  scene.add(terr);
-
-  // Byggnader: instansierade boxar med lodräta väggar
-  if(bldPix.length){
-    const bbox=new THREE.BoxGeometry(1,1,1);
-    const bld=new THREE.InstancedMesh(bbox,
-      new THREE.MeshLambertMaterial({color:0xd9c8a8}),bldPix.length);
-    const bm4=new THREE.Matrix4();
-    bldPix.forEach(([x,g,z,bh],i)=>{
-      bm4.makeScale(1,bh,1);
-      bm4.setPosition(x,g+bh/2,z);
-      bld.setMatrixAt(i,bm4);
-    });
-    bld.castShadow=bld.receiveShadow=true;
-    scene.add(bld);
-  }
-
-  // Vegetation: instansierade pelare ur B-kanalen
-  if(vegPix.length){
-    const box=new THREE.BoxGeometry(1,1,1);
-    const veg=new THREE.InstancedMesh(box,
-      new THREE.MeshLambertMaterial({color:0x7db36a}),vegPix.length);
-    const m4=new THREE.Matrix4();
-    vegPix.forEach(([x,hb,z,vh],i)=>{
-      m4.makeScale(1,Math.max(0.5,vh),1);
-      m4.setPosition(x,hb+vh/2,z);
-      veg.setMatrixAt(i,m4);
-    });
-    veg.castShadow=veg.receiveShadow=true;
-    scene.add(veg);
-  }
-
-  // Markören: parasoll vid P
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,3.4,8),
-    new THREE.MeshLambertMaterial({color:0x6b5a44}));
-  pole.position.set(0,1.7,0);pole.castShadow=true;scene.add(pole);
-  const para=new THREE.Mesh(new THREE.ConeGeometry(2.8,1.2,10),
-    new THREE.MeshLambertMaterial({color:0xf7b32b}));
-  para.position.set(0,3.7,0);para.castShadow=true;scene.add(para);
-  const sun3=new THREE.Mesh(new THREE.SphereGeometry(170,20,20),
-    new THREE.MeshBasicMaterial({color:0xffde6a,fog:false}));
-  const glow=new THREE.Mesh(new THREE.SphereGeometry(300,20,20),
-    new THREE.MeshBasicMaterial({color:0xffe9a3,transparent:true,opacity:0.3,fog:false}));
-  sun3.add(glow);
-  scene.add(sun3);
-  T3marker={pole,para,terr,sun3};
-
-  scene.add(new THREE.AmbientLight(0xffffff,0.35));
-  const hemi=new THREE.HemisphereLight(0xcfe0ee,0xe8dcc0,0.35);scene.add(hemi);
-  const sun=new THREE.DirectionalLight(0xfff3d6,1.15);
-  sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048);
-  const sc=sun.shadow.camera;
-  sc.left=-180;sc.right=180;sc.top=180;sc.bottom=-180;sc.near=10;sc.far=800;
-  scene.add(sun);scene.add(sun.target);
-
-  // Orbitkontroll
-  const ctrl={th:-0.7,ph:1.05,r:150,tgt:new THREE.Vector3(0,8,0)};
-  function apply(){
-    cam.position.set(
-      ctrl.tgt.x+ctrl.r*Math.sin(ctrl.ph)*Math.sin(ctrl.th),
-      ctrl.tgt.y+ctrl.r*Math.cos(ctrl.ph),
-      ctrl.tgt.z+ctrl.r*Math.sin(ctrl.ph)*Math.cos(ctrl.th));
-    cam.lookAt(ctrl.tgt);
-  }
-  apply();
-  const ptr=new Map();let pd=0;
-  const el=renderer.domElement;
-  let downAt=null;
-  el.addEventListener('pointerdown',e=>{ptr.set(e.pointerId,[e.clientX,e.clientY]);
-    downAt=[e.clientX,e.clientY];el.setPointerCapture(e.pointerId);});
-  el.addEventListener('pointerup',e=>{
-    ptr.delete(e.pointerId);
-    if(downAt && Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5)
-      moveParasol(e,el,cam);
-    downAt=null;
-  });
-  el.addEventListener('pointercancel',e=>ptr.delete(e.pointerId));
-  el.addEventListener('pointermove',e=>{
-    if(!ptr.has(e.pointerId))return;
-    if(ptr.size===1){
-      const [px,py]=ptr.get(e.pointerId);
-      ctrl.th-=(e.clientX-px)*0.008;
-      ctrl.ph=Math.min(1.45,Math.max(0.25,ctrl.ph-(e.clientY-py)*0.006));
-      apply();
-    } else if(ptr.size===2){
-      ptr.set(e.pointerId,[e.clientX,e.clientY]);
-      const ps=[...ptr.values()];
-      const d=Math.hypot(ps[0][0]-ps[1][0],ps[0][1]-ps[1][1]);
-      if(pd)ctrl.r=Math.min(500,Math.max(35,ctrl.r*pd/d));
-      pd=d;apply();return;
-    }
-    ptr.set(e.pointerId,[e.clientX,e.clientY]);
-  });
-  el.addEventListener('wheel',e=>{e.preventDefault();
-    ctrl.r=Math.min(500,Math.max(35,ctrl.r*(1+e.deltaY*0.001)));apply();},{passive:false});
-
-  T3={renderer,scene,cam,sun,hemi,raf:0};
-  (function loop(){T3.raf=requestAnimationFrame(loop);renderer.render(scene,cam);})();
-}
-function moveParasol(e,el,cam){
-  if(!T3||!T3marker||!t3pos) return;
-  const r=el.getBoundingClientRect();
-  const p=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,
-                            -((e.clientY-r.top)/r.height)*2+1);
-  const rc=new THREE.Raycaster();
-  rc.setFromCamera(p,cam);
-  const hit=rc.intersectObject(T3marker.terr)[0];
-  if(!hit) return;
-  const {x,y,z}=hit.point;
-  T3marker.pole.position.set(x,y+1.7,z);
-  T3marker.para.position.set(x,y+3.7,z);
-  const newE=t3pos.E+x, newN=t3pos.N-z;   // -z = norr
-  if(t3pos.venue){
-    const v=t3pos.venue;
-    manPos[v.name]=[newE,newN]; savePos();
-    const h=horizonAt(newE,newN,400);
-    if(h){
-      v.E=newE; v.N=newN; v.manual=true; v.snapped=false;
-      v.band=venueBand(v.lat,v.lng,h.hB,h.vegIv);
-      renderVenues(0);
-    }
-    document.getElementById('t3hint').textContent='läge sparat ✔ · klicka igen för att justera';
-  }
-}
-function updSun3(){
-  if(!T3||!t3pos)return;
-  const h=+document.getElementById('t3time').value;
-  document.getElementById('t3tlbl').textContent=fmtH(h);
-  const d=new Date(t3pos.dateStr+'T00:00:00');
-  d.setMinutes(Math.round(h*60));
-  const p=sunPos(d,t3pos.lat,t3pos.lng);
-  drawT3band();
-  const alt=p.altDeg*rad, az=p.azDeg*rad, R=450;
-  T3.sun.position.set(Math.sin(az)*Math.cos(alt)*R,Math.max(4,Math.sin(alt)*R),-Math.cos(az)*Math.cos(alt)*R);
-  const day=Math.max(0,Math.min(1,(p.altDeg+6)/18));
-  T3.sun.intensity=p.altDeg>0?0.55+0.7*day:0;
-  T3.scene.background=new THREE.Color().lerpColors(
-    new THREE.Color(0x2c3a5c),new THREE.Color(0xcfe0ee),day);
-  T3.hemi.intensity=0.15+0.3*day;
-}
-
-/* ================ Uteserveringslistan ================ */
-let favs=new Set(), onlyFavs=false, lastVenues=null;
-let listDateStr=new Date().toISOString().slice(0,10);
-let listStartH=null;                 // null = "Nu"
-let tmode='walk';
-const MODES={
-  walk:   {icon:'i-walk', gm:'walking',   calc:d=>d/1000*12},
-  bike:   {icon:'i-bike', gm:'bicycling', calc:d=>d/1000*4},
-  transit:{icon:'i-bus',  gm:'transit',   calc:d=>d/1000*3+6},
-};
-function travel(v){
-  let M=MODES[tmode];
-  if(tmode==='transit' && MODES.walk.calc(v.dist)<=MODES.transit.calc(v.dist)) M=MODES.walk;
-  return {M, mins: Math.max(1,Math.round(M.calc(v.dist)))};
-}
-function listPeriod(){
-  const today=new Date().toISOString().slice(0,10);
-  let f=listStartH!=null ? listStartH
-       : (listDateStr===today ? nowQ() : 12);
-  f=Math.min(21.5,Math.max(6,f));
-  return [f, Math.min(24, f + +document.getElementById('listDur').value)];
-}
-let manPos={};    // egna flyttade parasoll (localStorage): namn -> [E,N]
-let curPos={};    // kurerade lägen från repot (lagen.json)
-try{ manPos=JSON.parse(localStorage.getItem('hu_pos')||'{}'); }catch(_){}
-fetch('lagen.json').then(r=>r.ok?r.json():null).then(d=>{
-  if(d&&d.lagen){ curPos=d.lagen; }
-}).catch(()=>{});
-function posFor(namn){                 // eget läge > kurerat > inget
-  return manPos[namn] || curPos[namn] || null;
-}
-function savePos(){ try{localStorage.setItem('hu_pos',JSON.stringify(manPos));}catch(_){} }
-try{ favs=new Set(JSON.parse(localStorage.getItem('hu_favs')||'[]')); }catch(_){}
-function saveFavs(){ try{localStorage.setItem('hu_favs',JSON.stringify([...favs]));}catch(_){} }
-
-/* Punkt 8: opening_hours - parser för de vanligaste mönstren.
-   Klarar: "Mo-Fr 10:00-22:00; Sa,Su 12:00-20:00", "Mo-Su 15:00-22:00",
-   "24/7", "We-Su 15:00-01:00" (över midnatt), "Mo off".
-   Oparsebart -> {ok:false} och stället behålls med "öppettid?" */
-const OH_DAYS={mo:0,tu:1,we:2,th:3,fr:4,sa:5,su:6};
-function parseOH(str){
-  if(!str) return {ok:false};
-  const txt=str.trim().toLowerCase();
-  if(txt==='24/7') return {ok:true, always:true, rules:[]};
-  const rules=[];
-  for(let part of txt.split(';')){
-    part=part.trim();
-    if(!part||part.startsWith('ph')) continue;   // helgdagar: hoppa
-    const m=part.match(/^([a-z,\- ]+?)\s+(off|closed|[\d:, \-]+)$/);
-    if(!m) return {ok:false};
-    const days=new Set();
-    for(const tok of m[1].split(',')){
-      const t2=tok.trim();
-      const rng=t2.match(/^([a-z]{2})\s*-\s*([a-z]{2})$/);
-      if(rng){
-        const a=OH_DAYS[rng[1]],b=OH_DAYS[rng[2]];
-        if(a==null||b==null) return {ok:false};
-        for(let d=a; ; d=(d+1)%7){ days.add(d); if(d===b)break; }
-      } else {
-        const d=OH_DAYS[t2];
-        if(d==null) return {ok:false};
-        days.add(d);
-      }
-    }
-    if(m[2]==='off'||m[2]==='closed'){
-      rules.push({days,ivs:[]});
-      continue;
-    }
-    const ivs=[];
-    for(const span of m[2].split(',')){
-      const t3=span.trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
-      if(!t3) return {ok:false};
-      let a=+t3[1]+t3[2]/60, b=+t3[3]+t3[4]/60;
-      if(b<=a) b+=24;                     // över midnatt
-      ivs.push([a,b]);
-    }
-    rules.push({days,ivs});
-  }
-  return rules.length? {ok:true, rules} : {ok:false};
-}
-function fmtTim(x){    // 2 -> "2h", 0.5 -> "0,5h"
-  return (x%1===0 ? String(x) : x.toFixed(1).replace('.',','))+'h';
-}
-function ohIdag(oh, weekday){
-  if(oh.always) return 'dygnet runt';
-  let ivs=null;
-  for(const r of oh.rules) if(r.days.has(weekday)) ivs=r.ivs;
-  if(ivs===null||!ivs.length) return 'stängt idag';
-  return ivs.map(([a,b])=>fmtHH(a)+'–'+fmtHH(b>=24?b-24:b)).join(', ');
-}
-function ohOpen(oh, weekday, f, t){
-  // weekday: 0=må ... 6=sö. Sant om [f,t] ryms i något intervall.
-  if(oh.always) return true;
-  let ivs=null;
-  for(const r of oh.rules) if(r.days.has(weekday)) ivs=r.ivs;  // sista regeln vinner
-  if(ivs===null) return false;           // dagen nämns inte = stängt
-  return ivs.some(([a,b])=>f>=a && t<=b);
-}
-
-const CAT_OF=t=>{
-  const a=(t.amenity||'');
-  const c={};
-  if(a==='cafe') c.coffee=1;
-  if(a==='bar'||a==='pub'||a==='biergarten'||a==='restaurant') c.beer=1;
-  if(a==='bar'||a==='restaurant') c.wine=1;
-  if(a==='bar') c.drinks=1;
-  if(a==='restaurant'||t.cuisine) c.food=1;
-  return c;
-};
-function nowQ(){ const d=new Date(); return Math.min(21.5,Math.max(6,d.getHours()+Math.ceil(d.getMinutes()/15)*0.25)); }
-const fmtHH=h=>String(Math.floor(h)).padStart(2,'0')+':'+(h%1?String(Math.round(h%1*60)).padStart(2,'0'):'00');
-
-function pip(x,y,p){
-  let inne=false;
-  for(let i=0,j=p.length-1;i<p.length;j=i++){
-    const [xi,yi]=p[i],[xj,yj]=p[j];
-    if(((yi>y)!==(yj>y)) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inne=!inne;
-  }
-  return inne;
-}
-function snapOutsideFacade(E,N,polys){
-  // Ligger punkten inne i ett OSM-hus: flytta till närmaste fasad + 1,5 m ut
-  for(const poly of polys){
-    if(E<poly.minE-1||E>poly.maxE+1||N<poly.minN-1||N>poly.maxN+1) continue;
-    if(!pip(E,N,poly.pts)) continue;
-    let best=null;
-    const p=poly.pts;
-    for(let i=0,j=p.length-1;i<p.length;j=i++){
-      const ax=p[j][0],ay=p[j][1],bx=p[i][0],by=p[i][1];
-      const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy||1e-9;
-      let t=((E-ax)*dx+(N-ay)*dy)/L2; t=Math.max(0,Math.min(1,t));
-      const fx=ax+dx*t, fy=ay+dy*t;
-      const d2=(E-fx)**2+(N-fy)**2;
-      if(!best||d2<best.d2) best={d2,fx,fy,dx,dy};
-    }
-    const L=Math.hypot(best.dx,best.dy)||1;
-    let nx=-best.dy/L, ny=best.dx/L;
-    if(pip(best.fx+nx*0.5,best.fy+ny*0.5,poly.pts)){nx=-nx;ny=-ny;}
-    return {E:best.fx+nx*1.5, N:best.fy+ny*1.5};
-  }
-  return null;
-}
-function snapToGround(E,N,maxR=35){
-  // OSM ger husets mittpunkt for många ställen - flytta punkten till
-  // närmaste pixel som inte är byggnad (gatan utanför entrén, ungefär).
-  const s0=sample(E,N);
-  if(!s0 || !s0[3]) return {E,N,snapped:false};   // redan på mark (eller fmt 1)
-  for(let r=2;r<=maxR;r++){
-    const steps=Math.max(8,Math.round(r*2*Math.PI/2));
-    for(let k=0;k<steps;k++){
-      const a=k/steps*2*Math.PI;
-      const E2=E+Math.sin(a)*r, N2=N+Math.cos(a)*r;
-      const s=sample(E2,N2);
-      if(s && !s[3]) return {E:E2,N:N2,snapped:true};
-    }
-  }
-  return {E,N,snapped:false};
-}
-
-async function fetchVenues(lat,lng,r){
-  const q=`[out:json][timeout:30];nwr["amenity"~"^(cafe|bar|pub|restaurant|biergarten)$"]["name"](around:${r},${lat},${lng});out center tags;way["building"](around:${r+80},${lat},${lng});out geom;`;
-  return (await overpass(q)).elements;
-}
-
-function venueBand(lat,lng,hB,vegIv){
-  // 64 kvartar 06-22 för valt datum, kod: 0 skugga, 1 träd, 2 sol, 3 natt
-  const band=new Uint8Array(64);
-  const base=new Date(listDateStr+'T00:00:00');
-  for(let q2=0;q2<64;q2++){
-    const d=new Date(base); d.setMinutes((6*60)+q2*15);
-    const s=sunPos(d,lat,lng);
-    if(s.altDeg<=0.3){ band[q2]=3; continue; }
-    const bin=Math.floor(s.azDeg)%AZBINS;
-    if(s.altDeg<=hB[bin]){ band[q2]=0; continue; }
-    let tr=false;
-    for(const iv of vegIv[bin]) if(s.altDeg>=iv[0]&&s.altDeg<=iv[1]){tr=true;break;}
-    band[q2]=tr?1:2;
-  }
-  return band;
-}
-
-async function searchVenues(){
-  const info=document.getElementById('listInfo');
-  if(mode!=='laser'){ info.textContent='Listan kräver laserraster-läge (tiles saknas).'; return; }
-  const c=map.getCenter();
-  info.innerHTML='<span class="spin"></span>Hämtar ställen från OpenStreetMap …';
-  try{
-    const els=await fetchVenues(c.lat,c.lng,700);
-    const {E:cE,N:cN}=toSweref(c.lat,c.lng);
-    // Byggnadskonturer i SWEREF for fasadsnappning
-    const polys=[];
-    for(const el of els){
-      if(el.type==='way' && el.tags && el.tags.building && el.geometry){
-        const pts=el.geometry.map(g=>{const p=toSweref(g.lat,g.lon);return [p.E,p.N];});
-        let minE=1e12,maxE=-1e12,minN=1e12,maxN=-1e12;
-        for(const [pe,pn] of pts){
-          if(pe<minE)minE=pe; if(pe>maxE)maxE=pe;
-          if(pn<minN)minN=pn; if(pn>maxN)maxN=pn;
-        }
-        polys.push({pts,minE,maxE,minN,maxN});
-      }
-    }
-    await ensureTiles(cE,cN,1150);
-    const venues=[];
-    let skipped=0;
-    info.innerHTML='<span class="spin"></span>Räknar solband för '+els.length+' ställen …';
-    await new Promise(r=>setTimeout(r,20));
-    for(const el of els){
-      const t=el.tags||{};
-      if(t.building) continue;                    // konturer, inte ställen
-      const vlat=el.lat??el.center?.lat, vlng=el.lon??el.center?.lon;
-      if(vlat==null) continue;
-      const sw=toSweref(vlat,vlng);
-      let E,N,manual=false,_snapped=false;
-      const pp=posFor(t.name);
-      if(pp){ [E,N]=pp; manual=true; }
-      else {
-        const fs=snapOutsideFacade(sw.E,sw.N,polys);   // 1) OSM-fasad + 1,5 m
-        if(fs){ E=fs.E; N=fs.N; _snapped=true; }
-        else {                                          // 2) rasterflagga (fallback)
-          const sn=snapToGround(sw.E,sw.N);
-          E=sn.E; N=sn.N; _snapped=sn.snapped;
-        }
-      }
-      const h=horizonAt(E,N,400);
-      if(!h){ skipped++; continue; }
-      const dx=E-cE, dy=N-cN;
-      venues.push({
-        name:t.name, lat:vlat, lng:vlng, E, N,
-        snapped:!manual&&_snapped, manual,
-        cats:CAT_OF(t), outdoor:t.outdoor_seating||'', oh:t.opening_hours||'',
-        dist:Math.round(Math.hypot(dx,dy)),
-        ohp:parseOH(t.opening_hours),
-        h,
-        band:venueBand(vlat,vlng,h.hB,h.vegIv)
-      });
-    }
-    lastVenues=venues;
-    lastVenues.skipped=skipped;
-    renderVenues(skipped);
-  }catch(err){
-    info.innerHTML='<span class="err">Fel: '+err.message+'</span>';
-  }
-}
-
-function updateWhenLabel(){
-  const el=document.getElementById('whenLabel');
-  if(!el) return;
-  const idag=new Date().toISOString().slice(0,10);
-  if(listStartH==null && listDateStr===idag){ el.textContent='Nu'; return; }
-  const [f]=listPeriod();
-  el.textContent=(+listDateStr.slice(8,10))+'/'+(+listDateStr.slice(5,7))+' '+fmtHH(f);
-}
-function rebuildBands(){
-  if(!lastVenues) return;
-  for(const v of lastVenues) v.band=venueBand(v.lat,v.lng,v.h.hB,v.h.vegIv);
-}
-function renderVenues(skipped){
-  const info=document.getElementById('listInfo');
-  const listEl=document.getElementById('venueList');
-  if(!lastVenues){ return; }
-  if(skipped==null) skipped=lastVenues.skipped||0;
-  const [f,tRaw]=listPeriod(), t=Math.min(22,tRaw);
-  updateWhenLabel();
-  const wanted=[...document.querySelectorAll('#listCard .chip.on')].map(x=>x.dataset.cat);
-  document.getElementById('favSw').classList.toggle('show',favs.size>0);
-  const month=new Date().getMonth();
-  const sunOf=v=>{
-    let sun=0,tree=0;
-    for(let q2=Math.round((f-6)*4);q2<Math.round((t-6)*4);q2++){
-      if(q2<0||q2>=64)continue;
-      if(v.band[q2]===2)sun+=0.25; else if(v.band[q2]===1)tree+=0.25;
-    }
-    return {sun,tree};
-  };
-  const wd=(new Date(listDateStr+'T12:00:00').getDay()+6)%7;   // 0=måndag
-  const maxT=+document.getElementById('maxTravel').value;
-  let vs=lastVenues.filter(v=>
-    wanted.some(cc=>v.cats[cc]) &&
-    travel(v).mins<=maxT &&
-    (!v.ohp.ok || ohOpen(v.ohp, wd, f, t)) &&   // kända stängda filtreras bort
-    (!onlyFavs||favs.has(v.name))
-  );
-  vs.sort((a,b)=>{
-    const A=sunOf(a),B=sunOf(b);
-    return (B.sun+0.5*B.tree)-(A.sun+0.5*A.tree) || travel(a).mins-travel(b).mins;
-  });
-  renderFavList();
-  document.getElementById('legend').style.display=vs.length?'flex':'none';
-  venueLayer.clearLayers();
-  const pieCols={0:'#93a0b4',1:'#7db36a',2:'#f7b32b',3:'#2c3a5c'};
-  function pieIcon(v,i){
-    // Tårtbitar = solbandet under vald period. Periodstart rakt upp, medurs.
-    const qf=Math.max(0,Math.round((f-6)*4)), qt=Math.min(64,Math.round((t-6)*4));
-    const nq=Math.max(1,qt-qf), R2=13, C=14;
-    // slå ihop intilliggande kvartar med samma färg
-    const segs=[];
-    for(let q2=qf;q2<qt;q2++){
-      const col=pieCols[v.band[q2]];
-      if(segs.length&&segs[segs.length-1].col===col) segs[segs.length-1].n++;
-      else segs.push({col,n:1});
-    }
-    let idx=0, paths='';
-    const pt=a=>[C+R2*Math.sin(a), C-R2*Math.cos(a)];
-    for(const sg of segs){
-      const a0=idx/nq*2*Math.PI, a1=(idx+sg.n)/nq*2*Math.PI;
-      idx+=sg.n;
-      if(sg.n===nq){ paths+=`<circle cx="${C}" cy="${C}" r="${R2}" fill="${sg.col}"/>`; continue; }
-      const [x0,y0]=pt(a0),[x1,y1]=pt(a1);
-      paths+=`<path d="M${C},${C} L${x0.toFixed(2)},${y0.toFixed(2)} A${R2},${R2} 0 ${(a1-a0)>Math.PI?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${sg.col}"/>`;
-    }
-    const html=`<svg class="piemark" width="28" height="28" viewBox="0 0 28 28" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))">
-      <circle cx="${C}" cy="${C}" r="${R2+0.8}" fill="#33281a"/>
-      ${paths}
-      <circle cx="${C}" cy="${C}" r="7.2" fill="#fdf6e8" stroke="#33281a" stroke-width="1.2"/>
-      <text x="${C}" y="${C+3.4}" text-anchor="middle" font-family="'Bricolage Grotesque',sans-serif"
-            font-weight="700" font-size="9.5" fill="#33281a">${i+1}</text>
-    </svg>`;
-    return L.divIcon({className:'',html,iconSize:[28,28],iconAnchor:[14,14]});
-  }
-  const marks=[];
-  vs.forEach((v,i)=>{
-    const mk=L.marker([v.lat,v.lng],{icon:pieIcon(v,i)}).addTo(venueLayer);
-    marks.push(mk);
-    mk.on('click',()=>highlightVenue(i,marks));
-  });
-  window._huMarks=marks; window._huVenues=vs;
-  info.textContent=`Sol ${fmtHH(f)}–${fmtHH(t)} den ${(+listDateStr.slice(8,10))}/${(+listDateStr.slice(5,7))} · ${vs.length} ställen`
-    +(skipped?` (${skipped} utanför höjddatan)`:'')
-    +' · mest sol, sen kortast restid · kända stängda dolda';
-  listEl.innerHTML='';
-  const cols={0:'#93a0b4',1:'#7db36a',2:'#f7b32b',3:'#2c3a5c'};
-  vs.forEach((v,i)=>{
-    const {sun,tree}=sunOf(v);
-    const {M,mins}=travel(v);
-    const gurl=`https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=${M.gm}`;
-    const el=document.createElement('div');
-    el.className='venue';
-    el.id='vcard-'+i;
-    el.addEventListener('click',ev=>{
-      if(ev.target.closest('.v3d,.vheart,a')) return;
-      highlightVenue(i,null,true);
-    });
-    el.innerHTML=`
-      <div class="vtop"><span class="rank">${i+1}</span><span class="vname">${v.name}</span>
-        <span class="v3d">3D</span>
-        <span class="vheart${favs.has(v.name)?' on':''}">♥</span></div>
-      <div class="vmeta">
-        <a href="${gurl}" target="_blank" rel="noopener"><svg class="ci"><use href="#${M.icon}"/></svg> ${mins} min</a>
-        ${v.outdoor==='yes'?'<span class="ute">uteservering</span>':
-          v.outdoor==='no'?'':'<span class="uteq">uteservering?</span>'}
-        ${Object.keys(v.cats).map(cc=>({coffee:'i-coffee',beer:'i-beer',wine:'i-wine',drinks:'i-drink',food:'i-food'})[cc])
-          .filter(Boolean).map(ic=>`<svg class="ci"><use href="#${ic}"/></svg>`).join(' ')}
-        ${v.ohp.ok?`<span class="ute">öppet</span><span class="oh">${ohIdag(v.ohp,wd)}</span>`:
-          v.oh?`<span class="uteq" title="${v.oh}">öppettid?</span><span class="oh">${v.oh.slice(0,32)}</span>`:''}
-        ${v.manual?`<span class="ute" title="${manPos[v.name]?'Du har placerat parasollet här i 3D-vyn':'Läge kontrollerat och kurerat'}">✔ läge</span>`:
-          v.snapped?'<span class="uteq" title="Punkten låg inne i huset; flyttad till 1,5 m utanför fasadliv. Öppna 3D och klicka på marken för att finjustera.">≈ läge</span>':''}
-      </div>
-      <div class="bandrow"><canvas class="miniband"></canvas>
-        <span class="sunscore">${fmtTim(sun)}${tree>0?`<b class="tr">+${fmtTim(tree)}</b>`:''}</span></div>
-      <div class="bandhours"><span>06</span><span>10</span><span>14</span><span>18</span><span>22</span></div>`;
-    listEl.appendChild(el);
-    const cv=el.querySelector('canvas');
-    const w=cv.clientWidth||300;
-    cv.width=w*devicePixelRatio; cv.height=24*devicePixelRatio;
-    const cx=cv.getContext('2d'); cx.scale(devicePixelRatio,devicePixelRatio);
-    const pw=w/64, Hb=24;
-    // Full färgstyrka i hela bandet (ingen nedtoning utanför perioden)
-    for(let q2=0;q2<64;q2++){cx.fillStyle=cols[v.band[q2]];cx.fillRect(q2*pw,0,pw+.5,Hb);}
-    // Trim-ram runt vald period, med pilspetsar inåt (Apple-klippstil)
-    const xa=(f-6)*4*pw, xb=(t-6)*4*pw, LW=3;
-    cx.strokeStyle='#33281a'; cx.lineWidth=LW;
-    cx.strokeRect(xa+LW/2, LW/2, Math.max(LW,xb-xa-LW), Hb-LW);
-    cx.fillStyle='#33281a';
-    const ar=5.5;                      // pilspetsarnas djup
-    cx.beginPath();                    // vänster pilspets, insida = insida ram
-    cx.moveTo(xa+LW, Hb/2-ar); cx.lineTo(xa+LW+ar*0.75, Hb/2); cx.lineTo(xa+LW, Hb/2+ar);
-    cx.closePath(); cx.fill();
-    cx.beginPath();                    // höger pilspets
-    cx.moveTo(xb-LW, Hb/2-ar); cx.lineTo(xb-LW-ar*0.75, Hb/2); cx.lineTo(xb-LW, Hb/2+ar);
-    cx.closePath(); cx.fill();
-    // Trädskuggning: månadsvis transmission visas i tooltip
-    cv.title=`Silad sol: krona skuggar ~${Math.round((1-TREE_TRANS[month])*100)}% denna månad`;
-    el.querySelector('.v3d').addEventListener('click',()=>
-      open3dAt(v.E,v.N,v.lat,v.lng,v.name,v));
-    el.querySelector('.vheart').addEventListener('click',e=>{
-      favs.has(v.name)?favs.delete(v.name):favs.add(v.name);
-      if(!favs.size){onlyFavs=false;document.getElementById('favTgl').classList.remove('on');}
-      saveFavs();renderVenues(skipped);
-    });
-  });
-}
-
-function highlightVenue(i,marks,panTo){
-  document.querySelectorAll('.venue.hl').forEach(e=>e.classList.remove('hl'));
-  document.querySelectorAll('.piemark.hl').forEach(e=>e.classList.remove('hl'));
-  const el=document.getElementById('vcard-'+i);
-  if(el){
-    el.classList.add('hl');
-    if(!panTo) el.scrollIntoView({behavior:'smooth',block:'center'});
-  }
-  if(panTo){
-    const v=(window._huVenues||[])[i];
-    if(v) map.setView([v.lat,v.lng],Math.max(map.getZoom(),17),{animate:true});
-  }
-  const mk=(marks||window._huMarks||[])[i];
-  if(mk&&mk._icon){
-    const d=mk._icon.querySelector('.piemark')||mk._icon.firstElementChild;
-    if(d) d.classList.add('hl');
-  }
-  clearTimeout(highlightVenue._t);
-  highlightVenue._t=setTimeout(()=>{
-    document.querySelectorAll('.venue.hl,.piemark.hl').forEach(e=>e.classList.remove('hl'));
-  },2600);
-}
-let verTaps=0, verTimer=null;
-function verTapped(){
-  clearTimeout(verTimer);
-  verTimer=setTimeout(()=>{verTaps=0;},1500);
-  if(++verTaps<5) return;
-  verTaps=0;
-  const n=Object.keys(manPos).length;
-  const txt=JSON.stringify({
-    kommentar:'Parasollägen (SWEREF99 TM). Skicka till utvecklaren för kurering.',
-    skapad:new Date().toISOString().slice(0,16).replace('T',' '),
-    lagen:manPos
-  },null,1);
-  const w=document.createElement('div');
-  w.className='card';
-  w.style.cssText='position:fixed;inset:8% 5%;z-index:9999;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.35)';
-  w.innerHTML=`<h2>Egna parasollägen (${n} st)</h2>
-    <div class="datainfo">Kopiera texten och skicka in – dina lägen kan då bakas in i appen för alla.</div>
-    <textarea style="width:100%;min-height:38vh;font-family:var(--mono);font-size:.72rem;
-      border:1px solid var(--line);border-radius:9px;padding:.5rem;background:#fff;color:var(--ink)"></textarea>
-    <div class="controls" style="margin-top:.5rem">
-      <button class="okbtn" id="lgCopy">Kopiera</button>
-      <button class="addbtn ghostbtn" id="lgClose">Stäng</button>
-    </div>`;
-  document.body.appendChild(w);
-  const ta=w.querySelector('textarea');
-  ta.value=txt;
-  w.querySelector('#lgCopy').addEventListener('click',()=>{
-    ta.select();
-    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject())
-      .then(()=>{w.querySelector('#lgCopy').textContent='Kopierat ✓';})
-      .catch(()=>{document.execCommand('copy');w.querySelector('#lgCopy').textContent='Kopierat ✓';});
-  });
-  w.querySelector('#lgClose').addEventListener('click',()=>w.remove());
-}
-function renderFavList(){
-  const el=document.getElementById('favList');
-  if(!el) return;
-  if(!favs.size){el.innerHTML='<span class="none">Inga favoriter ännu – tryck på ett hjärta eller skriv nedan.</span>';return;}
-  el.innerHTML=[...favs].map(n=>
-    `<span class="favpill">♥ ${n}<b data-rm="${n.replace(/"/g,'&quot;')}">×</b></span>`).join('');
-  el.querySelectorAll('b[data-rm]').forEach(b=>b.addEventListener('click',()=>{
-    favs.delete(b.dataset.rm);
-    if(!favs.size){onlyFavs=false;document.getElementById('favTgl').classList.remove('on');}
-    saveFavs();renderVenues();
-  }));
-}
-function matchVenueName(line){
-  if(!lastVenues) return null;
-  const q=line.trim().toLowerCase();
-  if(!q) return null;
-  return lastVenues.find(v=>{
-    const n=v.name.toLowerCase();
-    return n.includes(q)||q.includes(n);
-  })||null;
-}
-
-/* ---------- Init ---------- */
-map=L.map('map').setView([59.306,18.001],15);   // Aspudden tills position fås
-let posDot=null;
-const LocBtn=L.Control.extend({
-  options:{position:'topleft'},
-  onAdd:function(){
-    const b=L.DomUtil.create('div','locbtn');
-    b.innerHTML='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/></svg>';
-    b.title='Centrera på min plats';
-    L.DomEvent.disableClickPropagation(b);
-    b.addEventListener('click',()=>{
-      if(!navigator.geolocation) return;
-      b.classList.add('busy');
-      navigator.geolocation.getCurrentPosition(p=>{
-        b.classList.remove('busy');
-        const ll=[p.coords.latitude,p.coords.longitude];
-        map.setView(ll,16);
-        if(posDot) map.removeLayer(posDot);
-        posDot=L.circleMarker(ll,{radius:7,color:'#fff',weight:2.5,
-          fillColor:'#2a6fbb',fillOpacity:1}).addTo(map).bindTooltip('Du är här');
-      },()=>b.classList.remove('busy'),{enableHighAccuracy:true,timeout:8000});
-    });
-    return b;
-  }
+$('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
+  <div class="row"><button class="btn" data-a="rename">Byt namn</button><button class="btn" data-a="pdf">Lägg till PDF</button>
+  <button class="btn danger" data-a="del">Radera projekt</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+  if(a==='rename'){const n=prompt('Projektnamn:',S.project.name);if(n){S.project.name=n.trim();await put('projects',S.project);$('#projTitle').textContent=S.project.name}}
+  if(a==='pdf')$('#filePdf').click();
+  if(a==='del'&&confirm(`Radera "${S.project.name}" med alla planer och foton?`)){
+    for(const s of ['files','plans','sessions','points'])for(const o of await byProject(s,S.project.id))await del(s,o.id);
+    await del('projects',S.project.id);showProjects()}
 });
-map.addControl(new LocBtn());
-if(navigator.geolocation){
-  navigator.geolocation.getCurrentPosition(p=>{
-    const ll=[p.coords.latitude,p.coords.longitude];
-    map.setView(ll,16);
-    posDot=L.circleMarker(ll,{radius:7,color:'#fff',weight:2.5,
-      fillColor:'#2a6fbb',fillOpacity:1}).addTo(map).bindTooltip('Du är här');
-  },()=>{},{enableHighAccuracy:true,timeout:8000});
-}
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-bldLayer=L.layerGroup().addTo(map);
-treeLayer=L.layerGroup().addTo(map);
-const venueLayer=L.layerGroup().addTo(map);
-map.on('click',ev=>{P=ev.latlng;startAnalysis(true);});
 
-(function init(){
-  const today=new Date();
-  document.getElementById('dateInput').value=today.toISOString().slice(0,10);
-  document.getElementById('timeSlider').value=today.getHours()*60+today.getMinutes();
-  document.getElementById('dateInput').addEventListener('change',()=>{if(P)recomputeDay();});
-  document.getElementById('timeSlider').addEventListener('input',()=>{if(P){drawBand();updateStatus();}});
-  document.getElementById('dayband').addEventListener('click',ev=>{
-    const r=ev.target.getBoundingClientRect();
-    const mins=Math.round((ev.clientX-r.left)/r.width*1440/5)*5;
-    document.getElementById('timeSlider').value=Math.max(0,Math.min(1439,mins));
-    drawBand();updateStatus();
-  });
-  document.getElementById('recalcBtn').addEventListener('click',()=>{if(P)startAnalysis(mode==='osm');});
-  document.getElementById('btn3d').addEventListener('click',()=>{ if(lastEN&&P) open3dAt(lastEN.E,lastEN.N,P.lat,P.lng,'3D-vy'); });
-  document.getElementById('t3close').addEventListener('click',close3d);
-  document.getElementById('t3overlay').addEventListener('click',e=>{if(e.target.id==='t3overlay')close3d();});
-  document.getElementById('t3time').addEventListener('input',()=>{stopT3Anim();updSun3();});
-  document.getElementById('t3time').addEventListener('pointerdown',stopT3Anim);
-  window.addEventListener('resize',()=>{if(dayData){drawBand();drawYear();}});
-  for(let d=0.5;d<=18;d+=0.5)
-    document.getElementById('listDur').add(new Option((d%1?d.toFixed(1).replace('.',','):d)+' h',d));
-  document.getElementById('listDur').value=2;
-  const mt=document.getElementById('maxTravel');
-  for(let m2=1;m2<=60;m2++) mt.add(new Option('≤ '+m2+' min',m2));
-  mt.value=10;
-  document.getElementById('listDate').value=listDateStr;
-  document.getElementById('listFrom').add(new Option('Nu (automatiskt)',''));
-  for(let h2=6;h2<=21.5;h2+=0.5)
-    document.getElementById('listFrom').add(new Option(fmtHH(h2),h2));
-  document.getElementById('listBtn').addEventListener('click',searchVenues);
-  const vt=document.getElementById('verTag');
-  if(vt){ vt.style.cursor='pointer'; vt.addEventListener('click',verTapped); }
-  document.getElementById('listDur').addEventListener('change',()=>renderVenues());
-  document.getElementById('maxTravel').addEventListener('change',()=>renderVenues());
-  document.getElementById('whenChip').addEventListener('click',()=>{
-    document.getElementById('listDate').value=listDateStr;
-    document.getElementById('listFrom').value =
-      listStartH==null ? '' : String(listStartH);
-    document.getElementById('whenExp').classList.toggle('open');
-    document.getElementById('whenChip').classList.toggle('openp');
-    document.getElementById('setExp').classList.remove('open');
-    document.getElementById('setBtn').classList.remove('on');
-  });
-  document.getElementById('whenOk').addEventListener('click',()=>{
-    const dv=document.getElementById('listDate').value;
-    const fv=document.getElementById('listFrom').value;
-    if(dv) listDateStr=dv;
-    listStartH = fv==='' ? listStartH : +fv;
-    updateWhenLabel();
-    rebuildBands();renderVenues();
-    document.getElementById('whenExp').classList.remove('open');
-    document.getElementById('whenChip').classList.remove('openp');
-  });
-  document.getElementById('setBtn').addEventListener('click',()=>{
-    document.getElementById('setExp').classList.toggle('open');
-    document.getElementById('setBtn').classList.toggle('on');
-    document.getElementById('whenExp').classList.remove('open');
-    document.getElementById('whenChip').classList.remove('openp');
-  });
-  document.getElementById('listDate').addEventListener('change',e=>{
-    listDateStr=e.target.value||listDateStr;
-    updateWhenLabel();rebuildBands();renderVenues();
-  });
-  document.getElementById('listFrom').addEventListener('change',e=>{
-    listStartH = e.target.value==='' ? null : +e.target.value;
-    updateWhenLabel();renderVenues();
-  });
-  document.getElementById('nowBtn').addEventListener('click',()=>{
-    listStartH=null;
-    listDateStr=new Date().toISOString().slice(0,10);
-    document.getElementById('listDate').value=listDateStr;
-    document.getElementById('listFrom').value='';
-    updateWhenLabel();
-    rebuildBands();renderVenues();
-  });
-  document.querySelectorAll('.modebtn').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.modebtn').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); tmode=b.dataset.tmode;
-    document.getElementById('travelLbl').textContent=
-      {walk:'Gångtid',bike:'Cykeltid',transit:'Kollektivtrafik'}[tmode];
-    renderVenues();
-  }));
-  document.getElementById('favAdd').addEventListener('click',()=>{
-    const lines=document.getElementById('favInput').value.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!lastVenues){document.getElementById('favMsg').innerHTML='<span class="miss">Sök först – matchning sker mot hittade ställen.</span>';return;}
-    const msg=[];
-    for(const line of lines){
-      const hit=matchVenueName(line);
-      if(hit){favs.add(hit.name);msg.push(`<span class="hit">✓ ${hit.name}</span>`);}
-      else msg.push(`<span class="miss">✗ ingen träff: &quot;${line}&quot;</span>`);
-    }
-    document.getElementById('favMsg').innerHTML=msg.join('<br>');
-    document.getElementById('favInput').value='';
-    saveFavs();renderVenues();
-  });
-  document.getElementById('favExport').addEventListener('click',()=>{
-    document.getElementById('favInput').value=[...favs].join('\n');
-    document.getElementById('favMsg').innerHTML=`<span class="hit">${favs.size} favoriter listade – kopiera och spara var du vill.</span>`;
-  });
-  document.querySelectorAll('#listCard .chip').forEach(ch=>
-    ch.addEventListener('click',()=>{ch.classList.toggle('on');renderVenues();}));
-  document.getElementById('favTgl').addEventListener('click',()=>{
-    onlyFavs=!onlyFavs;
-    document.getElementById('favTgl').classList.toggle('on',onlyFavs);
-    renderVenues();
-  });
-  loadIndex();
-})();
+/* ---------- Platsbesök (sessioner) ---------- */
+const sessName=s=>`${s.date}${s.seq>1?' #'+s.seq:''}${s.label?' – '+s.label:''}`;
+const sessFolder=s=>`besok/${s.date}${s.seq>1?'_'+s.seq:''}${s.label?'_'+safeName(s.label):''}`;
+async function newSession(silent){const d=today();let label='';
+  if(!silent){const v=prompt('Tilläggsnamn (valfritt), t.ex. Inventering hyresgäst 1:','');if(v===null)return;label=v.trim()}
+  const seq=S.sessions.filter(x=>x.date===d).length+1;
+  const s={id:uid(),projectId:S.project.id,date:d,seq,label,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
+  if(!silent){renderSessions();renderMarkers();renderStrip()}return s}
+function renderSessions(){const sel=$('#sessSel');sel.innerHTML='';
+  for(const s of [...S.sessions].reverse()){const o=document.createElement('option');o.value=s.id;o.textContent=sessName(s);sel.appendChild(o)}
+  sel.value=S.sessionId}
+$('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStrip()};
+$('#btnNewSess').onclick=()=>newSession(false);
+$('#btnSessMenu').onclick=()=>{const s=curSession();const pts=sessionPoints(s.id);const n=pts.reduce((a,p)=>a+p.photos.length,0);
+  modal(`<h3>${esc(sessName(s))}</h3><p class="meta">${n} foton</p>
+  <div class="row"><button class="btn" data-a="rename">Ändra tilläggsnamn</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
+  ${n&&canShareFiles(sessionFiles(s))?'<button class="btn" data-a="share">Spara alla foton i Bilder</button>':''}
+  <button class="btn danger" data-a="del">Radera besök</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+  if(a==='share')await shareFiles(sessionFiles(s),sessName(s));
+  if(a==='rename'){const v=prompt('Tilläggsnamn:',s.label||'');if(v!==null){s.label=v.trim();await put('sessions',s);renderSessions()}}
+  if(a==='toggle'){S.showAll=!S.showAll;renderMarkers()}
+  if(a==='del'&&confirm(`Radera besöket "${sessName(s)}" och dess ${n} foton?`)){
+    for(const p of pts)await del('points',p.id);
+    await del('sessions',s.id);await loadProject();if(!S.sessions.length)await newSession(true);S.sessionId=S.sessions[S.sessions.length-1].id;
+    renderSessions();renderMarkers();renderStrip()}
+})};
+const curSession=()=>S.sessions.find(s=>s.id===S.sessionId);
+const curPlan=()=>S.plans.find(p=>p.id===S.planId);
+
+/* ---------- Planer (PDF) ---------- */
+$('#btnAddPdf0').onclick=()=>$('#filePdf').click();
+$('#filePdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;busy(true);
+  try{for(const f of fs){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+      const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
+      const base=f.name.replace(/\.pdf$/i,'');
+      for(let i=1;i<=pdf.numPages;i++){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
+        await put('plans',pl);S.plans.push(pl)}}
+    if(!S.planId)S.planId=S.plans[0].id;renderPlans();await showPlan();toast('Planer tillagda')}
+  catch(err){console.error(err);toast('Kunde inte läsa PDF')}finally{busy(false)}};
+function renderPlans(){const el=$('#plans');el.innerHTML='';
+  for(const p of S.plans){const b=document.createElement('button');b.className='ptab'+(p.id===S.planId?' on':'');b.textContent=p.name;
+    let t,lp=false;
+    b.onpointerdown=()=>{lp=false;t=setTimeout(()=>{lp=true;const n=prompt('Namn på planen:',p.name);if(n&&n.trim()){p.name=n.trim();put('plans',p).then(()=>{renderPlans();renderStrip()})}},550)};
+    b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(t);b.oncontextmenu=e=>e.preventDefault();
+    b.onclick=async()=>{if(lp)return;S.planId=p.id;renderPlans();await showPlan();renderStrip()};el.appendChild(b)}
+  const add=document.createElement('button');add.className='ptab';add.textContent='+ PDF';add.onclick=()=>$('#filePdf').click();el.appendChild(add);
+  el.classList.toggle('hidden',!S.plans.length)}
+async function getPlanCanvas(plan){if(canvasCache.has(plan.id))return canvasCache.get(plan.id);
+  let pdf=pdfCache.get(plan.fileId);
+  if(!pdf){const f=S.files.find(f=>f.id===plan.fileId);pdf=await pdfjsLib.getDocument({data:await f.blob.arrayBuffer()}).promise;pdfCache.set(plan.fileId,pdf)}
+  const page=await pdf.getPage(plan.page);const v1=page.getViewport({scale:1});const scale=Math.min(3,2600/Math.max(v1.width,v1.height));
+  const vp=page.getViewport({scale});const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  if(canvasCache.size>=4)canvasCache.delete(canvasCache.keys().next().value);canvasCache.set(plan.id,c);return c}
+async function showPlan(){const plan=curPlan();const cv=$('#planCanvas');
+  $('#emptyPlan').classList.toggle('hidden',!!plan);$('#tools').classList.toggle('hidden',!plan);
+  if(!plan){cv.width=cv.height=0;$('#markers').innerHTML='';return}
+  busy(true);try{const src=await getPlanCanvas(plan);cv.width=src.width;cv.height=src.height;cv.getContext('2d').drawImage(src,0,0);fitView();renderMarkers()}
+  catch(e){console.error(e);toast('Kunde inte rendera planen')}finally{busy(false)}}
+$('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
+  modal(`<h3>${esc(p.name)}</h3>
+  <div class="field"><label>Namn</label><input id="fName" value="${esc(p.name)}"></div>
+  <p class="meta">Norr på ritningen: ${p.north||0}° (styr fotoriktningarna). Långtryck på planfliken byter också namn.</p>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="north">Ställ in norr</button><button class="btn danger" data-a="del">Ta bort plan</button><button class="btn" data-a="close">Avbryt</button></div>`,async(a,m)=>{
+  if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;await put('plans',p);renderPlans();renderStrip()}
+  if(a==='north')startNorth();
+  if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!confirm(`Ta bort "${p.name}"${n?` och ${n} punkter på den`:''}?`))return;
+    for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);await del('plans',p.id);
+    if(!S.plans.some(q=>q.fileId===p.fileId&&q.id!==p.id)){await del('files',p.fileId)}
+    canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip()}
+})};
+
+/* ---------- Norrpil ---------- */
+let northTmp=0,nDrag=null;const nov=$('#northOv');
+function startNorth(){const p=curPlan();if(!p)return;setMode('view');northTmp=p.north||0;nov.classList.remove('hidden');$('#northSheet').classList.remove('hidden');$('#tools').classList.add('hidden');drawNorth()}
+function drawNorth(){northTmp=((Math.round(northTmp)%360)+360)%360;$('#northG').setAttribute('transform',`rotate(${northTmp})`);$('#northVal').textContent=northTmp+'°'}
+async function endNorth(save){if(save){const p=curPlan();p.north=northTmp;await put('plans',p);renderMarkers();toast('Norr sparat')}
+  nov.classList.add('hidden');$('#northSheet').classList.add('hidden');$('#tools').classList.remove('hidden')}
+const nAng=e=>{const r=nov.getBoundingClientRect();return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2)))*180/Math.PI};
+nov.addEventListener('pointerdown',e=>{nov.setPointerCapture(e.pointerId);nDrag={a0:nAng(e),n0:northTmp}});
+nov.addEventListener('pointermove',e=>{if(!nDrag)return;northTmp=nDrag.n0+nAng(e)-nDrag.a0;drawNorth()});
+nov.addEventListener('pointerup',()=>nDrag=null);nov.addEventListener('pointercancel',()=>nDrag=null);
+$('#nM').onclick=()=>{northTmp-=1;drawNorth()};$('#nP').onclick=()=>{northTmp+=1;drawNorth()};$('#nQ').onclick=()=>{northTmp+=90;drawNorth()};
+$('#btnNorthSave').onclick=()=>endNorth(true);$('#btnNorthCancel').onclick=()=>endNorth(false);
+
+/* ---------- Vy: panorering / zoom ---------- */
+const vp=$('#vp'),world=$('#world');
+function applyView(){world.style.transform=`translate(${V.px}px,${V.py}px) scale(${V.z})`;$('#markers').style.setProperty('--inv',1/V.z)}
+function fitView(){const cv=$('#planCanvas');if(!cv.width)return;const r=vp.getBoundingClientRect();
+  V.z=Math.min(r.width/cv.width,r.height/cv.height)*.96;V.px=(r.width-cv.width*V.z)/2;V.py=(r.height-cv.height*V.z)/2;applyView()}
+$('#btnFit').onclick=fitView;window.addEventListener('resize',()=>{if(!$('#viewProject').classList.contains('hidden'))fitView()});
+const ptrs=new Map();let g=null;
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet,#northOv'))return;vp.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1)g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];g={type:'pinch',d0:dist(a,b),z0:V.z,px0:V.px,py0:V.py,c0:mid(a,b)}}});
+vp.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId)||!g)return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(g.type==='pan'&&ptrs.size===1){const dx=e.clientX-g.sx,dy=e.clientY-g.sy;if(Math.hypot(dx,dy)>8)g.moved=true;if(g.moved){V.px=g.px+dx;V.py=g.py+dy;applyView()}}
+  else if(g.type==='pinch'&&ptrs.size===2){const [a,b]=[...ptrs.values()];const r=vp.getBoundingClientRect();const z=clamp(g.z0*dist(a,b)/g.d0,.05,12);
+    const wx=(g.c0.x-r.left-g.px0)/g.z0,wy=(g.c0.y-r.top-g.py0)/g.z0;const c=mid(a,b);V.z=z;V.px=c.x-r.left-wx*z;V.py=c.y-r.top-wy*z;applyView()}});
+function endPtr(e){const tap=g&&g.type==='pan'&&!g.moved&&ptrs.size===1;ptrs.delete(e.pointerId);
+  if(tap)onTap(e,g.target);
+  if(ptrs.size===1){const [p]=[...ptrs.values()];g={type:'pan',sx:p.x,sy:p.y,px:V.px,py:V.py,moved:true}}else if(!ptrs.size)g=null}
+vp.addEventListener('pointerup',endPtr);vp.addEventListener('pointercancel',endPtr);
+vp.addEventListener('wheel',e=>{e.preventDefault();const r=vp.getBoundingClientRect();const z=clamp(V.z*(e.deltaY<0?1.15:1/1.15),.05,12);
+  const wx=(e.clientX-r.left-V.px)/V.z,wy=(e.clientY-r.top-V.py)/V.z;V.z=z;V.px=e.clientX-r.left-wx*z;V.py=e.clientY-r.top-wy*z;applyView()},{passive:false});
+function onTap(e,target){const mk=target.closest&&target.closest('.marker');
+  if(mk&&mk.dataset.id){openPoint(mk.dataset.id);return}
+  if(S.mode!=='add'||!curPlan())return;
+  const r=vp.getBoundingClientRect(),cv=$('#planCanvas');const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;
+  if(x<0||x>1||y<0||y>1)return;
+  S.pending={x,y,planId:S.planId};renderMarkers();$('#pendSheet').classList.remove('hidden');$('#hint').classList.add('hidden');updateCompassUI()}
+
+/* ---------- Lägga till foton ---------- */
+function setMode(m){S.mode=m;$('#btnAddMode').textContent=m==='add'?'Klar':'＋ Ny punkt';$('#btnAddMode').classList.toggle('accent',m!=='add');
+  $('#hint').classList.toggle('hidden',m!=='add');if(m!=='add')cancelPending();if(m==='add'&&!compassOn)enableCompass()}
+$('#btnAddMode').onclick=()=>setMode(S.mode==='add'?'view':'add');
+function cancelPending(){S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();if(S.mode==='add')$('#hint').classList.remove('hidden')}
+$('#btnPendCancel').onclick=cancelPending;
+$('#btnShoot').onclick=()=>{capturedHeading=lastHeading;$('#fileCam').click()};
+$('#btnPick').onclick=()=>{capturedHeading=lastHeading;$('#filePick').click()};
+async function onPhoto(e){const f=e.target.files[0];e.target.value='';if(!f)return;busy(true);
+  try{const thumb=await makeThumb(f);const shot={id:uid(),blob:f,thumb,heading:capturedHeading??null,created:new Date().toISOString()};
+    if(addTarget){const p=S.points.find(x=>x.id===addTarget);addTarget=null;
+      if(p){p.photos.push(shot);await put('points',p);renderMarkers();renderStrip();busy(false);openPoint(p.id);toast('Foto tillagt');return}}
+    else if(S.pending){const p={id:uid(),projectId:S.project.id,sessionId:S.sessionId,planId:S.pending.planId,x:S.pending.x,y:S.pending.y,note:'',created:new Date().toISOString(),photos:[shot]};
+      await put('points',p);S.points.push(p);S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();renderStrip();
+      if(S.mode==='add')$('#hint').classList.remove('hidden');toast('Foto sparat')}}
+  catch(err){console.error(err);toast('Kunde inte spara fotot')}finally{busy(false)}}
+$('#fileCam').onchange=onPhoto;$('#filePick').onchange=onPhoto;
+async function makeThumb(blob){let bmp;try{bmp=await createImageBitmap(blob,{imageOrientation:'from-image'})}catch{bmp=await createImageBitmap(blob)}
+  const s=Math.min(1,320/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);bmp.close&&bmp.close();return new Promise(r=>c.toBlob(r,'image/jpeg',.7))}
+
+/* ---------- Kompass ---------- */
+function onOrient(e){let h=null;if(e.webkitCompassHeading!=null)h=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)h=(360-e.alpha)%360;
+  if(h!=null&&!isNaN(h)){lastHeading=Math.round(h);updateCompassUI()}}
+async function enableCompass(){if(compassOn)return;
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    try{if(await DeviceOrientationEvent.requestPermission()!=='granted'){toast('Kompass nekad – riktning sparas inte');return}}catch{toast('Kompass ej tillgänglig');return}}
+  if(!window.DeviceOrientationEvent)return;
+  window.addEventListener('deviceorientationabsolute',onOrient,true);window.addEventListener('deviceorientation',onOrient,true);
+  compassOn=true;$('#compass').classList.remove('hidden');updateCompassUI()}
+function updateCompassUI(){const v=lastHeading==null?'–':lastHeading+'°';$('#compassVal').textContent=v;$('#pendHeading').textContent=lastHeading==null?'okänd':lastHeading+'°';
+  const n=$('#compass .needle');if(n)n.style.transform=`rotate(${lastHeading==null?0:-lastHeading}deg)`}
+
+/* ---------- Markörer & fotoremsa ---------- */
+function sessionPoints(sid){return S.points.filter(p=>p.sessionId===sid)}
+function pointIndex(p){return sessionPoints(p.sessionId).indexOf(p)+1}
+function markerSVG(p,plan,pending){const north=plan?.north||0;
+  const wedges=pending?'':p.photos.filter(sh=>sh.heading!=null).map(sh=>`<path class="wedge" d="M0,0 L-11,-21 A24,24 0 0 1 11,-21 Z" transform="rotate(${(sh.heading+north)%360})"/>`).join('');
+  const badge=!pending&&p.photos.length>1?`<circle class="cbadge" cx="12" cy="-12" r="7"/><text class="cnt" x="12" y="-12">${p.photos.length}</text>`:'';
+  return `<svg viewBox="-24 -24 48 48">${wedges}<circle class="dot" r="10"/><text>${pending?'':pointIndex(p)}</text>${badge}</svg>`}
+function renderMarkers(){const el=$('#markers');el.innerHTML='';const plan=curPlan();if(!plan)return;
+  const pts=S.points.filter(p=>p.planId===plan.id&&(S.showAll||p.sessionId===S.sessionId));
+  for(const p of pts){const d=document.createElement('div');d.className='marker'+(p.sessionId===S.sessionId?'':' old');d.dataset.id=p.id;
+    d.style.left=p.x*100+'%';d.style.top=p.y*100+'%';d.innerHTML=markerSVG(p,plan,false);el.appendChild(d)}
+  if(S.pending&&S.pending.planId===plan.id){const d=document.createElement('div');d.className='marker pending';d.style.left=S.pending.x*100+'%';d.style.top=S.pending.y*100+'%';
+    d.innerHTML=markerSVG(null,plan,true);el.appendChild(d)}}
+const urlCache=new Map();
+function thumbURL(sh){if(!urlCache.has(sh.id))urlCache.set(sh.id,URL.createObjectURL(sh.thumb));return urlCache.get(sh.id)}
+function dropURL(id){if(urlCache.has(id)){URL.revokeObjectURL(urlCache.get(id));urlCache.delete(id)}}
+function renderStrip(){const el=$('#strip');el.innerHTML='';const pts=sessionPoints(S.sessionId);
+  if(!pts.length){el.innerHTML='<div class="none">Inga foton i detta besök ännu. Tryck Ny punkt och sedan på planen.</div>';return}
+  for(const p of pts){const b=document.createElement('button');b.className='th'+(p.planId===S.planId?' on':'');
+    b.innerHTML=`<img src="${thumbURL(p.photos[0])}" alt=""><b>${pointIndex(p)}</b>${p.photos.length>1?`<i>${p.photos.length}</i>`:''}`;
+    b.onclick=async()=>{if(p.planId!==S.planId){S.planId=p.planId;renderPlans();await showPlan();renderStrip()}centerOn(p);openPoint(p.id)};el.appendChild(b)}}
+function centerOn(p){const cv=$('#planCanvas'),r=vp.getBoundingClientRect();V.px=r.width/2-p.x*cv.width*V.z;V.py=r.height/2-p.y*cv.height*V.z;applyView()}
+
+/* ---------- Punktdetalj ---------- */
+function photoFile(p,sh,i){const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);const b=shotBlob(sh);
+  return new File([b],`${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}${p.photos.length>1?String.fromCharCode(97+i):''}.${ext(b)}`,{type:b.type||'image/jpeg'})}
+function sessionFiles(s){return sessionPoints(s.id).flatMap(p=>p.photos.map((sh,i)=>photoFile(p,sh,i)))}
+const canShareFiles=files=>!!(navigator.canShare&&files.length&&navigator.canShare({files}));
+async function shareFiles(files,title){try{await navigator.share({files,title})}catch(e){if(e.name!=='AbortError')toast('Delning misslyckades: '+e.message)}}
+function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const plan=S.plans.find(x=>x.id===p.planId),sess=S.sessions.find(s=>s.id===p.sessionId);
+  const urls=[];
+  const gal=p.photos.map((sh,i)=>{const u=URL.createObjectURL(shotBlob(sh));urls.push(u);
+    return `<div class="shot" data-i="${i}"><img src="${u}" alt="">
+      <div class="meta"><span>${fmtTime(sh.created)}</span><span>${sh.heading!=null?'Riktning '+sh.heading+'°':'Ingen riktning'}</span>${sh.anno?'<span>Ritad på</span>':''}</div>
+      <div class="row"><button class="btn sm" data-d="draw">✏️ Rita</button>
+      ${canShareFiles([photoFile(p,sh,i)])?'<button class="btn sm" data-d="share">Spara i Bilder</button>':''}
+      ${sh.anno?'<button class="btn sm" data-d="undraw">Ta bort ritning</button>':''}
+      <button class="btn sm danger" data-d="delshot">Radera foto</button></div></div>`}).join('');
+  const m=modal(`<h3>Punkt ${pointIndex(p)} – ${esc(sess?sessName(sess):'')}</h3>
+  <div class="meta"><span>${esc(plan?.name||'')}</span><span>${p.photos.length} foton</span></div>${gal}
+  <div class="field"><label>Anteckning</label><textarea id="fNote">${esc(p.note)}</textarea></div>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="addshot">＋ Foto</button><button class="btn" data-a="move">Flytta punkt</button>
+  <button class="btn danger" data-a="del">Radera punkt</button><button class="btn" data-a="close">Stäng</button></div>`,
+  async(a,mm)=>{urls.forEach(u=>URL.revokeObjectURL(u));
+    if(a==='save'){p.note=mm.querySelector('#fNote').value;await put('points',p);toast('Sparat')}
+    if(a==='addshot'){addTarget=p.id;capturedHeading=lastHeading;$('#fileCam').click()}
+    if(a==='del'&&confirm('Radera punkten med alla foton?')){p.photos.forEach(sh=>dropURL(sh.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);renderMarkers();renderStrip()}
+    if(a==='move'){toast('Tryck på planen där punkten ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
+      const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;if(x>=0&&x<=1&&y>=0&&y<=1){p.x=x;p.y=y;p.planId=S.planId;await put('points',p);renderMarkers();renderStrip()}
+      vp.removeEventListener('pointerup',h,true)};setTimeout(()=>vp.addEventListener('pointerup',h,true),50)}});
+  m.querySelectorAll('.shot [data-d]').forEach(b=>{b.onclick=async ev=>{ev.stopPropagation();
+    const i=+b.closest('.shot').dataset.i,sh=p.photos[i],act=b.dataset.d;
+    if(act==='share'){await shareFiles([photoFile(p,sh,i)],'Foto');return}
+    if(act==='draw'){$('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));startDraw(p,sh);return}
+    if(act==='undraw'){delete sh.anno;sh.thumb=await makeThumb(sh.blob);dropURL(sh.id);await put('points',p);
+      $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip();openPoint(p.id);return}
+    if(act==='delshot'){if(p.photos.length===1){if(confirm('Sista fotot – radera hela punkten?')){p.photos.forEach(x=>dropURL(x.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);
+        $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip()}return}
+      if(!confirm('Radera fotot?'))return;dropURL(sh.id);p.photos.splice(i,1);await put('points',p);
+      $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip();openPoint(p.id)}}})}
+
+/* ---------- Rita på foto ---------- */
+const DW={};
+async function startDraw(point,shot){busy(true);
+  try{const base=shotBlob(shot);let bmp;try{bmp=await createImageBitmap(base,{imageOrientation:'from-image'})}catch{bmp=await createImageBitmap(base)}
+    Object.assign(DW,{point,shot,bmp,strokes:[],color:'#e8341f',wIdx:1,cur:null});
+    const bg=$('#dBg'),fg=$('#dFg');bg.width=fg.width=bmp.width;bg.height=fg.height=bmp.height;
+    bg.getContext('2d').drawImage(bmp,0,0);fg.getContext('2d').clearRect(0,0,fg.width,fg.height);
+    $('#draw').classList.remove('hidden');layoutDraw();
+    document.querySelectorAll('.dcol').forEach(b=>b.classList.toggle('on',b.dataset.c==='#e8341f'));$('#dWidth').textContent='Medel'}
+  finally{busy(false)}}
+function layoutDraw(){const w=$('#drawWrap');if(!DW.bmp||$('#draw').classList.contains('hidden'))return;
+  const r=w.getBoundingClientRect();const s=Math.min(r.width/DW.bmp.width,r.height/DW.bmp.height)*.98;DW.s=s;
+  for(const c of [$('#dBg'),$('#dFg')]){c.style.width=DW.bmp.width*s+'px';c.style.height=DW.bmp.height*s+'px';
+    c.style.left=(r.width-DW.bmp.width*s)/2+'px';c.style.top=(r.height-DW.bmp.height*s)/2+'px'}}
+window.addEventListener('resize',layoutDraw);
+const dWidths=[4,9,18];
+document.querySelectorAll('.dcol').forEach(b=>b.onclick=()=>{DW.color=b.dataset.c;document.querySelectorAll('.dcol').forEach(x=>x.classList.toggle('on',x===b))});
+$('#dWidth').onclick=()=>{DW.wIdx=(DW.wIdx+1)%3;$('#dWidth').textContent=['Fin','Medel','Grov'][DW.wIdx]};
+function dPos(e){const r=$('#dFg').getBoundingClientRect();return {x:(e.clientX-r.left)/DW.s,y:(e.clientY-r.top)/DW.s,p:e.pressure||.5}}
+function strokeSeg(ctx,st,a,b){ctx.strokeStyle=st.color;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.lineWidth=st.w*(0.5+((a.p+b.p)/2));ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+function redrawStrokes(){const ctx=$('#dFg').getContext('2d');ctx.clearRect(0,0,$('#dFg').width,$('#dFg').height);
+  for(const st of DW.strokes)for(let i=1;i<st.pts.length;i++)strokeSeg(ctx,st,st.pts[i-1],st.pts[i])}
+const dw=$('#drawWrap');
+dw.addEventListener('pointerdown',e=>{if(DW.cur)return;dw.setPointerCapture(e.pointerId);
+  const base=dWidths[DW.wIdx]*Math.max(1,($('#dFg').width/1500));
+  DW.cur={pid:e.pointerId,color:DW.color,w:base,pts:[dPos(e)]}});
+dw.addEventListener('pointermove',e=>{if(!DW.cur||e.pointerId!==DW.cur.pid)return;
+  const ctx=$('#dFg').getContext('2d');const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of evs){const pt=dPos(ev);const prev=DW.cur.pts[DW.cur.pts.length-1];DW.cur.pts.push(pt);strokeSeg(ctx,DW.cur,prev,pt)}});
+function dUp(e){if(DW.cur&&e.pointerId===DW.cur.pid){if(DW.cur.pts.length>1)DW.strokes.push(DW.cur);else redrawStrokes();DW.cur=null}}
+dw.addEventListener('pointerup',dUp);dw.addEventListener('pointercancel',dUp);
+$('#dUndo').onclick=()=>{DW.strokes.pop();redrawStrokes()};
+$('#dClear').onclick=()=>{if(DW.strokes.length&&!confirm('Rensa alla nya streck?'))return;DW.strokes=[];redrawStrokes()};
+$('#dCancel').onclick=()=>closeDraw(false);
+$('#dSave').onclick=()=>closeDraw(true);
+async function closeDraw(save){const p=DW.point,sh=DW.shot;
+  if(save&&DW.strokes.length){busy(true);
+    try{const c=document.createElement('canvas');c.width=DW.bmp.width;c.height=DW.bmp.height;const ctx=c.getContext('2d');
+      ctx.drawImage($('#dBg'),0,0);ctx.drawImage($('#dFg'),0,0);
+      const isPng=sh.blob.type==='image/png';
+      sh.anno=await new Promise(r=>c.toBlob(r,isPng?'image/png':'image/jpeg',.92));
+      sh.thumb=await makeThumb(sh.anno);dropURL(sh.id);await put('points',p);renderMarkers();renderStrip();toast('Ritning sparad')}
+    finally{busy(false)}}
+  DW.bmp&&DW.bmp.close&&DW.bmp.close();DW.bmp=null;DW.cur=null;DW.strokes=[];
+  $('#draw').classList.add('hidden');openPoint(p.id)}
+
+/* ---------- Modal ---------- */
+function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div class="overlay"><div class="modal">${html}</div></div>`;
+  const ov=host.firstElementChild,m=ov.firstElementChild;
+  const close=async a=>{host.innerHTML='';await onAction?.(a,m)};
+  m.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>close(b.dataset.a));
+  ov.addEventListener('pointerdown',e=>{if(e.target===ov)close('close')});return m}
+
+/* ---------- Export ---------- */
+$('#btnExport').onclick=()=>modal(`<h3>Exportera</h3><p class="meta">Zip innehåller planer, foton i mappar per besök, projekt.json och en fristående rapport.html. Zip-filer kan öppnas på en annan iPad och sammanfogas med samma projekt.</p>
+  <div class="row"><button class="btn primary" data-a="sess">Detta besök (.zip)</button><button class="btn primary" data-a="zip">Hela projektet (.zip)</button>
+  <button class="btn" data-a="html">Bara rapport.html</button><button class="btn" data-a="close">Avbryt</button></div>`,
+  async a=>{if(a==='sess')await exportZip(S.sessionId);if(a==='zip')await exportZip(null);if(a==='html')await exportHtmlOnly()});
+function buildManifest(sessionFilter){
+  const sessions=S.sessions.filter(s=>!sessionFilter||s.id===sessionFilter);
+  const pts=S.points.filter(p=>sessions.some(s=>s.id===p.sessionId));
+  return {app:'platsbesok',version:2,exported:new Date().toISOString(),
+    project:{id:S.project.id,name:S.project.name,created:S.project.created},
+    files:S.files.map(f=>({id:f.id,name:f.name,path:`planer/${f.id}_${safeName(f.name)}`})),
+    plans:S.plans.map(p=>({id:p.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0})),
+    sessions:sessions.map(s=>({id:s.id,name:sessName(s),date:s.date,seq:s.seq,label:s.label||'',created:s.created,folder:sessFolder(s)})),
+    points:pts.map(p=>{const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);
+      return {id:p.id,sessionId:p.sessionId,planId:p.planId,x:+p.x.toFixed(5),y:+p.y.toFixed(5),note:p.note,created:p.created,
+        photos:p.photos.map((sh,i)=>({id:sh.id,heading:sh.heading,created:sh.created,annotated:!!sh.anno,
+          path:`${sessFolder(s)}/${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}${p.photos.length>1?String.fromCharCode(97+i):''}.${ext(shotBlob(sh))}`}))}})}}
+async function exportZip(sessionFilter){busy(true);try{const man=buildManifest(sessionFilter);const zip=new JSZip();
+  zip.file('projekt.json',JSON.stringify(man,null,2));
+  for(const f of S.files)zip.file(man.files.find(x=>x.id===f.id).path,f.blob);
+  for(const mp of man.points){const p=S.points.find(x=>x.id===mp.id);
+    mp.photos.forEach((ph,i)=>zip.file(ph.path,shotBlob(p.photos[i])))}
+  zip.file('rapport.html',await buildReport(man));
+  const blob=await zip.generateAsync({type:'blob',compression:'STORE'});busy(false);
+  const sfx=sessionFilter?safeName(sessName(curSession())):'platsbesok_'+today();
+  offerSave(blob,`${safeName(S.project.name)}_${sfx}.zip`)}
+  catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
+async function exportHtmlOnly(){busy(true);try{const html=await buildReport(buildManifest(null));busy(false);offerSave(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
+  catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
+function offerSave(blob,name){const mb=(blob.size/1048576).toFixed(1);const file=new File([blob],name,{type:blob.type||'application/octet-stream'});
+  const canPick=!!window.showSaveFilePicker,canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+  modal(`<h3>Filen är klar</h3><p class="meta">${esc(name)} · ${mb} MB</p>
+  <div class="row">${canPick?'<button class="btn primary" data-a="pick">Spara som…</button>':''}${canShare?'<button class="btn primary" data-a="share">Spara till… / Dela</button>':''}
+  <button class="btn" data-a="dl">Ladda ner</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
+    if(a==='pick'){try{const h=await showSaveFilePicker({suggestedName:name});const w=await h.createWritable();await w.write(blob);await w.close();toast('Sparad')}catch(e){if(e.name!=='AbortError')toast('Kunde inte spara: '+e.message)}}
+    if(a==='share'){try{await navigator.share({files:[file],title:name})}catch(e){if(e.name!=='AbortError')toast('Delning misslyckades: '+e.message)}}
+    if(a==='dl')download(blob,name)})}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+async function buildReport(man){
+  const plans=[];for(const pm of man.plans){const p=S.plans.find(x=>x.id===pm.id);const c=await getPlanCanvas(p);
+    const s=Math.min(1,1800/Math.max(c.width,c.height));const o=document.createElement('canvas');
+    o.width=Math.round(c.width*s);o.height=Math.round(c.height*s);o.getContext('2d').drawImage(c,0,0,o.width,o.height);
+    plans.push({...pm,img:o.toDataURL('image/jpeg',.8)})}
+  const points=[];for(const mp of man.points){const p=S.points.find(x=>x.id===mp.id);
+    const photos=[];for(let i=0;i<p.photos.length;i++){const sh=p.photos[i];
+      const b=await createImageBitmap(shotBlob(sh));const s=Math.min(1,1200/Math.max(b.width,b.height));
+      const c=document.createElement('canvas');c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);
+      c.getContext('2d').drawImage(b,0,0,c.width,c.height);b.close&&b.close();
+      photos.push({id:sh.id,heading:sh.heading,created:sh.created,thumb:await blobToDataURL(sh.thumb),photo:c.toDataURL('image/jpeg',.75)})}
+    points.push({id:mp.id,sessionId:mp.sessionId,planId:mp.planId,x:mp.x,y:mp.y,note:mp.note,n:pointIndex(p),photos})}
+  const data=JSON.stringify({project:{name:man.project.name},exported:man.exported,plans,sessions:man.sessions,points}).replace(/<\//g,'<\\/');
+  return `<!DOCTYPE html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(S.project.name)} – platsbesök</title>
+<style>body{margin:0;font:15px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:#1c1f24;background:#f3f4f6}header{padding:18px 20px 10px;background:#fff;border-bottom:1px solid #d9dce2}
+h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#6b7280}.bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;background:#fff;border-bottom:1px solid #d9dce2;align-items:center}
+.bar button,.bar select{font:inherit;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #d9dce2;background:#fff;cursor:pointer}.bar button.on{background:#1c1f24;color:#fff;border-color:#1c1f24}
+#wrap{position:relative;margin:16px 20px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12);display:inline-block;max-width:calc(100% - 40px)}#wrap img{display:block;max-width:100%;height:auto}
+.mk{position:absolute;width:0;height:0}.mk svg{position:absolute;left:-18px;top:-18px;width:36px;height:36px;overflow:visible;cursor:pointer}.mk circle.d{fill:#e8541f;stroke:#fff;stroke-width:2}.mk .w{fill:#e8541f;opacity:.45}
+.mk.old circle.d{fill:#4b5c72}.mk.old .w{fill:#4b5c72}.mk text{fill:#fff;font-size:9px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#list{padding:0 20px 40px}.sess{margin:18px 0 8px;font-weight:600}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:#fff;border:1px solid #d9dce2;border-radius:8px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit}.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.card div{padding:6px 8px;font-size:13px;color:#6b7280}
+.card b{color:#1c1f24}#lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;color:#fff}#lb.on{display:flex}
+#lb img{max-width:100%;max-height:75vh;border-radius:6px}#lb p{margin:10px 0 0;max-width:800px;text-align:center}</style></head><body>
+<header><h1>${esc(S.project.name)}</h1><p>Platsbesök – exporterat ${fmtTime(man.exported)}</p></header>
+<div class="bar" id="tabs"></div><div class="bar"><label>Visa besök: <select id="sel"></select></label></div>
+<div id="wrap"><img id="plan" alt=""><div id="mk"></div></div><div id="list"></div><div id="lb"><img id="lbimg" alt=""><p id="lbtxt"></p></div>
+<script>const D=${data};let cur=D.plans[0]&&D.plans[0].id,sess='all';const $=s=>document.querySelector(s);const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function lbl(x,j){return x.n+(x.photos.length>1?String.fromCharCode(97+j):'')}
+function tabs(){$('#tabs').innerHTML=D.plans.map(p=>'<button class="'+(p.id===cur?'on':'')+'" data-id="'+p.id+'">'+E(p.name)+'</button>').join('');$('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.id;draw()});
+$('#sel').innerHTML='<option value="all">Alla</option>'+D.sessions.map(s=>'<option value="'+s.id+'">'+E(s.name)+'</option>').join('');$('#sel').value=sess;$('#sel').onchange=e=>{sess=e.target.value;draw()}}
+function draw(){tabs();const p=D.plans.find(x=>x.id===cur);if(!p){$('#wrap').style.display='none';$('#list').innerHTML='';return}$('#plan').src=p.img;
+const pts=D.points.filter(x=>x.planId===p.id&&(sess==='all'||x.sessionId===sess));const last=D.sessions[D.sessions.length-1];
+$('#mk').innerHTML=pts.map(x=>{const ws=x.photos.filter(f=>f.heading!=null).map(f=>'<path class="w" d="M0,0 L-8,-15 A17,17 0 0 1 8,-15 Z" transform="rotate('+((f.heading+(p.north||0))%360)+')"/>').join('');
+return '<div class="mk'+(sess==='all'&&last&&x.sessionId!==last.id?' old':'')+'" style="left:'+x.x*100+'%;top:'+x.y*100+'%"><svg viewBox="-18 -18 36 36" data-id="'+x.id+'">'+ws+'<circle class="d" r="7"/><text>'+x.n+'</text></svg></div>'}).join('');
+$('#mk').querySelectorAll('svg').forEach(s=>s.onclick=()=>show(s.dataset.id,0));
+const ss=sess==='all'?D.sessions:D.sessions.filter(s=>s.id===sess);$('#list').innerHTML=ss.map(s=>{const sp=D.points.filter(x=>x.sessionId===s.id);if(!sp.length)return '';
+const nf=sp.reduce((a,x)=>a+x.photos.length,0);
+return '<div class="sess">'+E(s.name)+' ('+nf+' foton)</div><div class="grid">'+sp.map(x=>{const pl=D.plans.find(q=>q.id===x.planId);
+return x.photos.map((f,j)=>'<button class="card" data-id="'+x.id+'" data-j="'+j+'"><img src="'+f.thumb+'" alt=""><div><b>'+lbl(x,j)+'</b> '+E(pl?pl.name:'')+(f.heading==null?'':' · '+f.heading+'°')+(x.note?'<br>'+E(x.note):'')+'</div></button>').join('')}).join('')+'</div>'}).join('');
+$('#list').querySelectorAll('.card').forEach(c=>c.onclick=()=>show(c.dataset.id,+c.dataset.j))}
+function show(id,j){const x=D.points.find(p=>p.id===id);const f=x.photos[j];const pl=D.plans.find(q=>q.id===x.planId),s=D.sessions.find(q=>q.id===x.sessionId);$('#lbimg').src=f.photo;
+$('#lbtxt').textContent='Foto '+lbl(x,j)+' · '+(s?s.name:'')+' · '+(pl?pl.name:'')+' · '+new Date(f.created).toLocaleString('sv-SE')+(f.heading==null?'':' · '+f.heading+'°')+(x.note?' — '+x.note:'');$('#lb').classList.add('on')}
+$('#lb').onclick=()=>$('#lb').classList.remove('on');draw();<\/script></body></html>`}
+
+/* ---------- Import (sammanfogar) ---------- */
+async function importZip(file){busy(true);try{const zip=await JSZip.loadAsync(file);const mf=zip.file('projekt.json');if(!mf)throw new Error('projekt.json saknas');
+  const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok')throw new Error('Fel filtyp');
+  let proj,added={pl:0,se:0,ph:0};
+  if(man.version>=2&&man.project.id){
+    proj=(await getAll('projects')).find(x=>x.id===man.project.id);
+    if(!proj){proj={id:man.project.id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj)}
+    const exF=new Set((await byProject('files',proj.id)).map(x=>x.id));
+    const exPl=new Set((await byProject('plans',proj.id)).map(x=>x.id));
+    const exSe=new Set((await byProject('sessions',proj.id)).map(x=>x.id));
+    const exP=new Map((await byProject('points',proj.id)).map(x=>[x.id,x]));
+    for(const f of man.files){if(exF.has(f.id))continue;const e=zip.file(f.path);if(!e)continue;
+      await put('files',{id:f.id,projectId:proj.id,name:f.name,blob:await e.async('blob')})}
+    for(const p of man.plans){if(exPl.has(p.id))continue;
+      await put('plans',{id:p.id,projectId:proj.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0});added.pl++}
+    for(const s of man.sessions){if(exSe.has(s.id))continue;
+      await put('sessions',{id:s.id,projectId:proj.id,date:s.date,seq:s.seq??1,label:s.label||'',created:s.created});added.se++}
+    for(const mp of man.points){
+      const shots=[];for(const ph of mp.photos){const e=zip.file(ph.path);if(!e)continue;const blob=await e.async('blob');
+        shots.push({id:ph.id,blob,thumb:await makeThumb(blob),heading:ph.heading??null,created:ph.created})}
+      const ex=exP.get(mp.id);
+      if(ex){if(!ex.photos)continue;const have=new Set(ex.photos.map(x=>x.id));let ny=false;
+        for(const sh of shots)if(!have.has(sh.id)){ex.photos.push(sh);added.ph++;ny=true}
+        if(ny){ex.photos.sort((a,b)=>a.created.localeCompare(b.created));await put('points',ex)}}
+      else if(shots.length){await put('points',{id:mp.id,projectId:proj.id,sessionId:mp.sessionId,planId:mp.planId,x:mp.x,y:mp.y,note:mp.note||'',created:mp.created,photos:shots});added.ph+=shots.length}}
+    toast(`Sammanfogat: +${added.se} besök, +${added.ph} foton${added.pl?`, +${added.pl} planer`:''}`)}
+  else{ // gammal zip (v1) – skapa nytt projekt
+    const id=uid(),map=new Map();proj={id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj);
+    for(const f of man.files){const e=zip.file(f.path);if(!e)continue;const nid=uid();map.set(f.id,nid);await put('files',{id:nid,projectId:id,name:f.name,blob:await e.async('blob')})}
+    for(const p of man.plans){const nid=uid();map.set(p.id,nid);await put('plans',{id:nid,projectId:id,fileId:map.get(p.fileId),page:p.page,name:p.name,north:p.north||0,order:p.order??0})}
+    for(const s of man.sessions){const nid=uid();map.set(s.id,nid);await put('sessions',{id:nid,projectId:id,date:s.date,seq:s.seq??1,label:s.label??(s.name&&s.name!==s.date?s.name:''),created:s.created})}
+    for(const p of man.points){const e=zip.file(p.path);if(!e)continue;const blob=await e.async('blob');
+      await put('points',{id:uid(),projectId:id,sessionId:map.get(p.sessionId),planId:map.get(p.planId),x:p.x,y:p.y,note:p.note||'',created:p.created,
+        photos:[{id:uid(),blob,thumb:await makeThumb(blob),heading:p.heading??null,created:p.created}]});added.ph++}
+    toast(`Importerat: ${added.ph} foton`)}
+  canvasCache.clear();pdfCache.clear();openProject(proj)}
+  catch(e){console.error(e);toast('Import misslyckades: '+e.message)}finally{busy(false)}}
+
+/* ---------- Start ---------- */
+openDB().then(showProjects).catch(e=>{console.error(e);alert('Kunde inte öppna lokal lagring: '+e.message)});
+navigator.storage&&navigator.storage.persist&&navigator.storage.persist();
 </script>
 </body>
 </html>
