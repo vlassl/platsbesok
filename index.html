@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f4efe3">
-<title>Platsbesök v0.17</title>
+<title>Platsbesök v0.19</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -99,6 +99,15 @@ input,select,textarea{font:inherit;color:inherit}
 #strip .th i{position:absolute;right:4px;bottom:4px;background:rgba(26,29,46,.85);color:var(--panel);font-style:normal;font-size:10px;padding:1px 5px;border-radius:3px}
 #strip .none{color:var(--mute);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:0 6px}
 
+/* --- Sidval --- */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:8px 0}
+.pg{border:1.5px solid var(--line);border-radius:6px;padding:6px;background:var(--bg);text-align:center;cursor:pointer;position:relative}
+.pg img{width:100%;display:block;border:1px solid var(--line);background:#fff}
+.pg span{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:4px}
+.pg.off{opacity:.35}.pg.off img{filter:grayscale(1)}
+.pg i{position:absolute;right:8px;top:8px;width:20px;height:20px;border-radius:4px;background:var(--accent);color:var(--ink);font:700 12px var(--mono);font-style:normal;display:flex;align-items:center;justify-content:center}
+.pg.off i{background:var(--panel);border:1.5px solid var(--line);color:transparent}
+
 /* --- Frågor --- */
 .marker.q rect{fill:var(--accent);stroke:var(--panel);stroke-width:2}
 .marker.q text{fill:var(--ink);font-size:10px}
@@ -169,7 +178,7 @@ input,select,textarea{font:inherit;color:inherit}
 
 <!-- Projektlista -->
 <div id="viewProjects" class="view">
-  <div class="version">Platsbesök · v0.17</div>
+  <div class="version">Platsbesök · v0.19</div>
   <h1>Platsbesök</h1>
   <p class="sub">Foton kopplade till punkter på planritningar.</p>
   <div id="plist" class="plist"></div>
@@ -244,6 +253,7 @@ input,select,textarea{font:inherit;color:inherit}
   <div id="northSheet" class="sheet hidden">
     <h3>Ställ in norr</h3>
     <p>Dra i pilen så den pekar mot norr på ritningen. Nu: <b id="northVal">0°</b></p>
+    <label class="chk" style="margin:0 0 10px"><input type="checkbox" id="northAll" checked> Gäller alla planer i projektet</label>
     <div class="row">
       <button class="btn" id="nM">−1°</button><button class="btn" id="nP">+1°</button><button class="btn" id="nQ">+90°</button>
       <button class="btn primary" id="btnNorthSave">Spara</button><button class="btn" id="btnNorthCancel">Avbryt</button>
@@ -409,11 +419,12 @@ $('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStri
 $('#btnNewSess').onclick=()=>newSession(false);
 $('#btnSessMenu').onclick=()=>{const s=curSession();const pts=sessionPoints(s.id);const n=pts.reduce((a,p)=>a+p.photos.length,0);
   modal(`<h3>${esc(sessName(s))}</h3><p class="meta">${n} foton</p>
-  <div class="row"><button class="btn" data-a="rename">Ändra tilläggsnamn</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
+  <div class="row"><button class="btn" data-a="rename">Ändra tilläggsnamn</button><button class="btn" data-a="date">Ändra datum</button><button class="btn" data-a="toggle">${S.showAll?'Visa bara detta besök':'Visa alla besök'}</button>
   ${n&&canShareFiles(sessionFiles(s))?'<button class="btn" data-a="share">Spara alla foton i Bilder</button>':''}
   <button class="btn danger" data-a="del">Radera besök</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
   if(a==='share')await shareFiles(sessionFiles(s),sessName(s));
-  if(a==='rename'){const v=await ask('Ändra tilläggsnamn','Tilläggsnamn',s.label||'');if(v!==null){s.label=v.trim();await put('sessions',s);renderSessions()}}
+  if(a==='rename'){const v=await ask('Ändra tilläggsnamn','Tilläggsnamn',s.label||'');if(v!==null){s.label=v.trim();s.updated=new Date().toISOString();await put('sessions',s);renderSessions()}}
+  if(a==='date'){const v=await askDate('Ändra datum',s.date);if(v&&v!==s.date){s.date=v;s.seq=S.sessions.filter(x=>x!==s&&x.date===v).length+1;s.updated=new Date().toISOString();await put('sessions',s);renderSessions()}}
   if(a==='toggle'){S.showAll=!S.showAll;renderMarkers()}
   if(a==='del'&&await confirmA(`Radera besöket "${sessName(s)}" och dess ${n} foton?`)){
     for(const p of pts)await del('points',p.id);
@@ -466,7 +477,8 @@ $('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
 let northTmp=0,nDrag=null;const nov=$('#northOv');
 function startNorth(){const p=curPlan();if(!p)return;setMode('view');northTmp=p.north||0;nov.classList.remove('hidden');$('#northSheet').classList.remove('hidden');$('#tools').classList.add('hidden');drawNorth()}
 function drawNorth(){northTmp=((Math.round(northTmp)%360)+360)%360;$('#northG').setAttribute('transform',`rotate(${northTmp})`);$('#northVal').textContent=northTmp+'°'}
-async function endNorth(save){if(save){const p=curPlan();p.north=northTmp;await put('plans',p);renderMarkers();toast('Norr sparat')}
+async function endNorth(save){if(save){const all=$('#northAll').checked;const targets=all?S.plans:[curPlan()];
+    for(const p of targets){p.north=northTmp;await put('plans',p)}renderMarkers();toast(all?`Norr ${northTmp}° satt på ${targets.length} planer`:'Norr sparat')}
   nov.classList.add('hidden');$('#northSheet').classList.add('hidden');$('#tools').classList.remove('hidden')}
 const nAng=e=>{const r=nov.getBoundingClientRect();return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2)))*180/Math.PI};
 nov.addEventListener('pointerdown',e=>{nov.setPointerCapture(e.pointerId);nDrag={a0:nAng(e),n0:northTmp}});
@@ -747,6 +759,10 @@ function ask(title,label,def){return new Promise(res=>{
   <div class="row"><button class="btn primary" data-a="ok">OK</button><button class="btn" data-a="close">Avbryt</button></div>`,
   (a,mm)=>res(a==='ok'?mm.querySelector('#askIn').value:null));
   const inp=m.querySelector('#askIn');inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();m.querySelector('[data-a="ok"]').click()}};setTimeout(()=>{inp.focus();inp.select()},60)})}
+function askDate(title,def){return new Promise(res=>{
+  const m=modal(`<h3>${esc(title)}</h3><div class="field"><label>Datum</label><input id="askIn" type="date" value="${esc(def||'')}"></div>
+  <div class="row"><button class="btn primary" data-a="ok">OK</button><button class="btn" data-a="close">Avbryt</button></div>`,
+  (a,mm)=>res(a==='ok'?mm.querySelector('#askIn').value:null));setTimeout(()=>m.querySelector('#askIn').focus(),60)})}
 function confirmA(msg){return new Promise(res=>modal(`<h3>Bekräfta</h3><p class="meta" style="text-transform:none;font-size:13px;letter-spacing:0">${esc(msg)}</p>
   <div class="row"><button class="btn danger" data-a="ok">Ja</button><button class="btn" data-a="close">Avbryt</button></div>`,a=>res(a==='ok')))}
 window.addEventListener('error',e=>toast('Fel: '+(e.message||e.error)));
@@ -928,10 +944,25 @@ function dirSource(root){
       try{const pd=await root.getDirectoryHandle('planer');for await(const [name,h] of pd.entries())if(h.kind==='file'&&/\.pdf$/i.test(name))out.push(await h.getFile())}catch{}return out},
     sessionPacks:async()=>{const out=[];let bd;try{bd=await root.getDirectoryHandle('besok')}catch{return out}
       for await(const [name,h] of bd.entries()){if(h.kind!=='directory')continue;const e=await get(`besok/${name}/besok.json`);if(e)out.push(JSON.parse(await e.async('string')))}return out}}}
-async function addPdfFiles(files){for(const f of files){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
-    const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
+async function pickPages(pdf,base){ // välj vilka sidor som blir planer
+  const thumbs=[];for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const v1=pg.getViewport({scale:1});const sc=220/Math.max(v1.width,v1.height);
+    const vp2=pg.getViewport({scale:sc});const c=document.createElement('canvas');c.width=Math.round(vp2.width);c.height=Math.round(vp2.height);
+    await pg.render({canvasContext:c.getContext('2d'),viewport:vp2}).promise;thumbs.push(c.toDataURL('image/jpeg',.6))}
+  busy(false);
+  return new Promise(res=>{const sel=new Set(thumbs.map((_,i)=>i+1));
+    const m=modal(`<h3>${esc(base)}</h3><p class="meta">${pdf.numPages} sidor – tryck för att välja bort sidor som inte är planer</p>
+      <div class="pgrid">${thumbs.map((t,i)=>`<div class="pg" data-p="${i+1}"><img src="${t}" alt=""><i>✓</i><span>Sida ${i+1}</span></div>`).join('')}</div>
+      <div class="row"><button class="btn primary" data-a="ok">Lägg till <span id="pgN">${pdf.numPages}</span> sidor</button><button class="btn sm" data-x="all">Alla</button><button class="btn sm" data-x="none">Inga</button><button class="btn" data-a="close">Avbryt</button></div>`,
+      a=>res(a==='ok'?[...sel].sort((x,y)=>x-y):null));
+    const upd=()=>{m.querySelectorAll('.pg').forEach(d=>d.classList.toggle('off',!sel.has(+d.dataset.p)));m.querySelector('#pgN').textContent=sel.size};
+    m.querySelectorAll('.pg').forEach(d=>d.onclick=()=>{const n=+d.dataset.p;sel.has(n)?sel.delete(n):sel.add(n);upd()});
+    m.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{sel.clear();if(b.dataset.x==='all')thumbs.forEach((_,i)=>sel.add(i+1));upd()})})}
+async function addPdfFiles(files,askPages=true){for(const f of files){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
     const base=f.name.replace(/\.pdf$/i,'');
-    for(let i=1;i<=pdf.numPages;i++){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
+    let pages=Array.from({length:pdf.numPages},(_,i)=>i+1);
+    if(askPages&&pdf.numPages>1){pages=await pickPages(pdf,base);busy(true);if(!pages||!pages.length)continue}
+    const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
+    for(const i of pages){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
       await put('plans',pl);S.plans.push(pl)}}}
 async function importFrom(src){busy(true);try{const mf=await src.file('projekt.json');
   if(!mf){ // vanlig mapp: skapa projekt av PDF:er i mappen
@@ -959,7 +990,7 @@ async function importFrom(src){busy(true);try{const mf=await src.file('projekt.j
     const exSeMap=new Map((await byProject('sessions',proj.id)).map(x=>[x.id,x]));
     for(const s of sessions){const ex=exSeMap.get(s.id);
       if(!ex){await put('sessions',{id:s.id,projectId:proj.id,date:s.date,seq:s.seq??1,label:s.label||'',created:s.created,updated:s.updated||s.created,sketches:s.sketches||{}});added.se++}
-      else if((s.updated||'')>(ex.updated||'')){await put('sessions',{...ex,label:s.label||ex.label,updated:s.updated,sketches:s.sketches||ex.sketches||{}})}}
+      else if((s.updated||'')>(ex.updated||'')){await put('sessions',{...ex,date:s.date||ex.date,seq:s.seq??ex.seq,label:s.label??ex.label,updated:s.updated,sketches:s.sketches||ex.sketches||{}})}}
     for(const mp of points){const ex=exP.get(mp.id);const have=new Set(ex?.photos?ex.photos.map(x=>x.id):[]);
       const shots=[];for(const ph of mp.photos){if(have.has(ph.id))continue;const e=await src.file(ph.path);if(!e)continue;const blob=await e.async('blob');
         shots.push({id:ph.id,blob,thumb:await makeThumb(blob),heading:ph.heading??null,created:ph.created})}
