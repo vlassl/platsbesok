@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f4efe3">
-<title>Platsbesök v0.15</title>
+<title>Platsbesök v0.17</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -169,7 +169,7 @@ input,select,textarea{font:inherit;color:inherit}
 
 <!-- Projektlista -->
 <div id="viewProjects" class="view">
-  <div class="version">Platsbesök · v0.15</div>
+  <div class="version">Platsbesök · v0.17</div>
   <h1>Platsbesök</h1>
   <p class="sub">Foton kopplade till punkter på planritningar.</p>
   <div id="plist" class="plist"></div>
@@ -312,12 +312,18 @@ const shotBlob=sh=>sh.anno||sh.blob;
 
 /* ---------- IndexedDB ---------- */
 let db;
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('platsbesok',2);
+function openOnce(){return new Promise((res,rej)=>{let done=false;const r=indexedDB.open('platsbesok',2);
   r.onupgradeneeded=e=>{const d=e.target.result;
     for(const s of ['projects','files','plans','sessions','points','questions']){if(d.objectStoreNames.contains(s))continue;const st=d.createObjectStore(s,{keyPath:'id'});
       if(s!=='projects')st.createIndex('projectId','projectId');if(s==='points')st.createIndex('sessionId','sessionId')}};
-  r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error)})}
-function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);const req=fn(t.objectStore(store));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error)})}
+  r.onblocked=()=>{toast('Lagringen är öppen i en annan flik/fönster – stäng den och ladda om')};
+  r.onsuccess=e=>{done=true;db=e.target.result;db.onversionchange=()=>{db.close();db=null;toast('Appen uppdaterades i en annan flik – ladda om sidan')};res()};
+  r.onerror=()=>{done=true;rej(r.error||new Error('IndexedDB-fel'))};
+  setTimeout(()=>{if(!done)rej(new Error('timeout'))},4000)})}
+async function openDB(){ // Safari kan låta open hänga – försök igen några gånger
+  for(let i=0;i<4;i++){try{await openOnce();return}catch(e){if(e.message!=='timeout')throw e;toast('Öppnar lagring… försöker igen')}}
+  throw new Error('Kunde inte öppna lokal lagring. Stäng andra flikar med appen och ladda om.')}
+function tx(store,mode,fn){return new Promise((res,rej)=>{if(!db)return rej(new Error('Lagringen är inte öppen än – vänta eller ladda om'));const t=db.transaction(store,mode);const req=fn(t.objectStore(store));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error)})}
 const put=(s,o)=>tx(s,'readwrite',st=>st.put(o));
 const del=(s,id)=>tx(s,'readwrite',st=>st.delete(id));
 const getAll=s=>tx(s,'readonly',st=>st.getAll());
@@ -345,7 +351,8 @@ $('#btnImportDir').onclick=async()=>{
   if(window.showDirectoryPicker){let h;try{h=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Kunde inte öppna mappen: '+e.message);return}
     busy(true);let z={n:0,files:0};try{z=await unpackZips(h)}catch(e){console.error(e);toast('Kunde inte packa upp zip: '+e.message)}finally{busy(false)}
     const ok=await importFrom(dirSource(h));
-    if(ok&&S.project){busy(true);try{await writePath(h,'rapport.html',await buildReport(buildManifest(null).flat));await writeCompleteZip(h)}catch(e){console.error(e)}finally{busy(false)}}
+    if(ok&&S.project){busy(true);try{if(!await pathExists(h,'projekt.json'))for(const [path,data] of exportEntries(buildManifest(null)))await writePath(h,path,data);
+      await writePath(h,'rapport.html',await buildReport(buildManifest(null).flat));await writeCompleteZip(h)}catch(e){console.error(e)}finally{busy(false)}}
     if(z.n)toast(`${z.n} zip uppackade (${z.files} filer), rapport.html och _projekt_komplett.zip uppdaterade`)}
   else $('#fileDir').click()};
 $('#fileDir').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
@@ -419,11 +426,7 @@ const curPlan=()=>S.plans.find(p=>p.id===S.planId);
 /* ---------- Planer (PDF) ---------- */
 $('#btnAddPdf0').onclick=()=>$('#filePdf').click();
 $('#filePdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;busy(true);
-  try{for(const f of fs){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
-      const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
-      const base=f.name.replace(/\.pdf$/i,'');
-      for(let i=1;i<=pdf.numPages;i++){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
-        await put('plans',pl);S.plans.push(pl)}}
+  try{await addPdfFiles(fs);
     if(!S.planId)S.planId=S.plans[0].id;renderPlans();await showPlan();toast('Planer tillagda')}
   catch(err){console.error(err);toast('Kunde inte läsa PDF')}finally{busy(false)}};
 function renderPlans(){const el=$('#plans');el.innerHTML='';
@@ -889,9 +892,9 @@ function zipSource(zip){return {
   file:async p=>zip.file(p)||null,
   sessionPacks:async()=>{const out=[];for(const f of zip.file(/^besok\/[^/]+\/besok\.json$/))out.push(JSON.parse(await f.async('string')));return out}}}
 function listSource(files){ // FileList från webkitdirectory – strip första mappnamnet
-  const map=new Map();for(const f of files){const parts=f.webkitRelativePath.split('/');map.set(parts.slice(1).join('/'),f)}
+  const map=new Map();let folderName='';for(const f of files){const parts=f.webkitRelativePath.split('/');folderName=parts[0];map.set(parts.slice(1).join('/'),f)}
   const get=async p=>{const f=map.get(p);return f?{async:t=>t==='string'?f.text():Promise.resolve(f)}:null};
-  return {file:get,sessionPacks:async()=>{const out=[];for(const [p,f] of map)if(/^besok\/[^/]+\/besok\.json$/.test(p))out.push(JSON.parse(await f.text()));return out}}}
+  return {file:get,name:folderName,pdfs:async()=>[...map.entries()].filter(([p])=>/\.pdf$/i.test(p)&&p.split('/').length<=2).map(([p,f])=>f),sessionPacks:async()=>{const out=[];for(const [p,f] of map)if(/^besok\/[^/]+\/besok\.json$/.test(p))out.push(JSON.parse(await f.text()));return out}}}
 async function pathExists(root,path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);await d.getFileHandle(parts[parts.length-1]);return true}catch{return false}}
 async function readJSON(root,path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);
   return JSON.parse(await (await (await d.getFileHandle(parts[parts.length-1])).getFile()).text())}catch{return null}}
@@ -920,10 +923,23 @@ async function unpackZips(root){let n=0,files=0;const rootMan=await readJSON(roo
 function dirSource(root){
   async function get(path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);
     const f=await (await d.getFileHandle(parts[parts.length-1])).getFile();return {async:t=>t==='string'?f.text():Promise.resolve(f)}}catch{return null}}
-  return {file:get,
+  return {file:get,name:root.name,
+    pdfs:async()=>{const out=[];for await(const [name,h] of root.entries())if(h.kind==='file'&&/\.pdf$/i.test(name))out.push(await h.getFile());
+      try{const pd=await root.getDirectoryHandle('planer');for await(const [name,h] of pd.entries())if(h.kind==='file'&&/\.pdf$/i.test(name))out.push(await h.getFile())}catch{}return out},
     sessionPacks:async()=>{const out=[];let bd;try{bd=await root.getDirectoryHandle('besok')}catch{return out}
       for await(const [name,h] of bd.entries()){if(h.kind!=='directory')continue;const e=await get(`besok/${name}/besok.json`);if(e)out.push(JSON.parse(await e.async('string')))}return out}}}
-async function importFrom(src){busy(true);try{const mf=await src.file('projekt.json');if(!mf)throw new Error('projekt.json saknas');
+async function addPdfFiles(files){for(const f of files){const buf=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+    const file={id:uid(),projectId:S.project.id,name:f.name,blob:new Blob([buf],{type:'application/pdf'})};await put('files',file);S.files.push(file);
+    const base=f.name.replace(/\.pdf$/i,'');
+    for(let i=1;i<=pdf.numPages;i++){const pl={id:uid(),projectId:S.project.id,fileId:file.id,page:i,name:pdf.numPages>1?`${base} s.${i}`:base,north:0,order:S.plans.length};
+      await put('plans',pl);S.plans.push(pl)}}}
+async function importFrom(src){busy(true);try{const mf=await src.file('projekt.json');
+  if(!mf){ // vanlig mapp: skapa projekt av PDF:er i mappen
+    const pdfs=src.pdfs?await src.pdfs():[];if(!pdfs.length)throw new Error('Mappen innehåller varken projekt.json eller PDF-planer');
+    busy(false);const name=await ask('Nytt projekt från mapp','Projektnamn',src.name||'');if(!name)return false;busy(true);
+    const proj={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',proj);
+    S.project=proj;S.files=[];S.plans=[];await addPdfFiles(pdfs);toast(`${S.plans.length} planer från ${pdfs.length} PDF`);
+    await openProject(proj);return true}
   const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok')throw new Error('Fel filtyp');
   let proj,added={pl:0,se:0,ph:0};
   if(man.version>=2&&man.project.id){
@@ -974,7 +990,9 @@ async function importFrom(src){busy(true);try{const mf=await src.file('projekt.j
   catch(e){console.error(e);toast('Import misslyckades: '+e.message);return false}finally{busy(false)}}
 
 /* ---------- Start ---------- */
-openDB().then(showProjects).catch(e=>{console.error(e);alert('Kunde inte öppna lokal lagring: '+e.message)});
+document.querySelectorAll('#viewProjects .btn').forEach(b=>b.disabled=true);
+openDB().then(()=>{document.querySelectorAll('#viewProjects .btn').forEach(b=>b.disabled=false);return showProjects()})
+  .catch(e=>{console.error(e);$('#plist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;toast(e.message)});
 navigator.storage&&navigator.storage.persist&&navigator.storage.persist();
 </script>
 </body>
