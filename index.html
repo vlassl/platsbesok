@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f4efe3">
-<title>Platsbesök v0.12</title>
+<title>Platsbesök v0.14</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -169,13 +169,13 @@ input,select,textarea{font:inherit;color:inherit}
 
 <!-- Projektlista -->
 <div id="viewProjects" class="view">
-  <div class="version">Platsbesök · v0.12</div>
+  <div class="version">Platsbesök · v0.14</div>
   <h1>Platsbesök</h1>
   <p class="sub">Foton kopplade till punkter på planritningar.</p>
   <div id="plist" class="plist"></div>
   <div class="row">
     <button class="btn primary" id="btnNewProject">Nytt projekt</button>
-    <button class="btn" id="btnImport">Öppna / lägg till zip</button>
+    <button class="btn" id="btnImport">Öppna zip (en eller flera)</button>
     <button class="btn" id="btnImportDir">Öppna mapp</button>
   </div>
   <p class="sub" style="margin-top:26px;font-size:10px">Allt sparas lokalt i den här webbläsaren. Zip eller mapp med samma projekt sammanfogas vid import — inget skrivs över. Foton sparas i originalkvalitet.</p>
@@ -285,7 +285,7 @@ input,select,textarea{font:inherit;color:inherit}
 <input type="file" id="fileCam" accept="image/*" capture="environment" class="hidden">
 <input type="file" id="filePick" accept="image/*" class="hidden">
 <input type="file" id="filePdf" accept="application/pdf" multiple class="hidden">
-<input type="file" id="fileZip" accept=".zip,application/zip" class="hidden">
+<input type="file" id="fileZip" accept=".zip,application/zip" multiple class="hidden">
 <input type="file" id="fileDir" webkitdirectory multiple class="hidden">
 <input type="file" id="fileQImg" accept="image/*" multiple class="hidden">
 
@@ -345,13 +345,16 @@ $('#btnImportDir').onclick=async()=>{
   if(window.showDirectoryPicker){let h;try{h=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Kunde inte öppna mappen: '+e.message);return}
     busy(true);let z={n:0,files:0};try{z=await unpackZips(h)}catch(e){console.error(e);toast('Kunde inte packa upp zip: '+e.message)}finally{busy(false)}
     const ok=await importFrom(dirSource(h));
-    if(ok&&S.project){try{await writePath(h,'rapport.html',await buildReport(buildManifest(null).flat))}catch(e){console.error(e)}}
-    if(z.n)toast(`${z.n} zip uppackade (${z.files} filer), rapport.html uppdaterad`)}
+    if(ok&&S.project){busy(true);try{await writePath(h,'rapport.html',await buildReport(buildManifest(null).flat));await writeCompleteZip(h)}catch(e){console.error(e)}finally{busy(false)}}
+    if(z.n)toast(`${z.n} zip uppackade (${z.files} filer), rapport.html och _projekt_komplett.zip uppdaterade`)}
   else $('#fileDir').click()};
 $('#fileDir').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
-  if(!fs.some(f=>f.webkitRelativePath)){toast('Mappval stöds inte i denna webbläsare (kräver iOS 18.4+)');return}
+  if(!fs.some(f=>f.webkitRelativePath)){toast('Mappval stöds inte här – kräver iOS 18.4+ i Safari. Använd zip på mobilen.');return}
   await importFrom(listSource(fs))};
-$('#fileZip').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f){try{await importFrom(zipSource(await JSZip.loadAsync(f)))}catch(err){toast('Import misslyckades: '+err.message)}}};
+$('#fileZip').onchange=async e=>{const fs=[...e.target.files].sort((a,b)=>a.name.localeCompare(b.name));e.target.value='';
+  // _projekt_komplett.zip först så planer och grund finns innan besökszippar
+  fs.sort((a,b)=>(b.name.startsWith('_')-a.name.startsWith('_')));
+  for(const f of fs){try{await importFrom(zipSource(await JSZip.loadAsync(f)))}catch(err){toast('Import misslyckades ('+f.name+'): '+err.message)}}};
 
 /* ---------- Projektvy ---------- */
 async function openProject(p){
@@ -477,7 +480,7 @@ function fitView(){const cv=$('#planCanvas');if(!cv.width)return;const r=vp.getB
 $('#btnFit').onclick=fitView;window.addEventListener('resize',()=>{if(!$('#viewProject').classList.contains('hidden'))fitView()});
 const ptrs=new Map();let g=null;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
-vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet,#northOv,#qpanel'))return;vp.setPointerCapture(e.pointerId);
+vp.addEventListener('pointerdown',e=>{if(e.target.closest('button,select,input,#tools,#compass,.sheet,#northOv,#qpanel'))return;vp.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===1){g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
     if(S.mode==='sketch'&&!SK.text&&curPlan()&&(e.pointerType!=='touch'||SK.finger))skStart(e)}
@@ -785,12 +788,16 @@ async function exportZip(sessionFilter){busy(true);try{const man=buildManifest(s
 async function writePath(root,path,data){const parts=path.split('/');let d=root;
   for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg,{create:true});
   const fh=await d.getFileHandle(parts[parts.length-1],{create:true});const w=await fh.createWritable();await w.write(data);await w.close()}
+async function writeCompleteZip(root){const man=buildManifest(null);const zip=new JSZip();
+  for(const [path,data] of exportEntries(man))zip.file(path,data);
+  for(const [path,blob] of photoEntries(man))zip.file(path,blob);
+  await writePath(root,'_projekt_komplett.zip',await zip.generateAsync({type:'blob',compression:'STORE'}))}
 async function exportDir(sessionFilter){let root;
   try{root=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Ingen mapp vald');return}
   busy(true);try{const man=buildManifest(sessionFilter);let n=0;
     for(const [path,data] of exportEntries(man)){await writePath(root,path,data)}
     for(const [path,blob] of photoEntries(man)){await writePath(root,path,blob);n++}
-    await writePath(root,'rapport.html',await buildReport(man.flat));
+    await writePath(root,'rapport.html',await buildReport(man.flat));await writeCompleteZip(root);
     toast(`Sparat i mappen: ${n} foton`)}
   catch(e){console.error(e);toast('Kunde inte skriva till mappen: '+e.message)}finally{busy(false)}}
 async function exportHtmlOnly(){busy(true);try{const html=await buildReport(buildManifest(null).flat);busy(false);offerSave(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
@@ -878,7 +885,7 @@ async function pathExists(root,path){try{const parts=path.split('/');let d=root;
 async function readJSON(root,path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);
   return JSON.parse(await (await (await d.getFileHandle(parts[parts.length-1])).getFile()).text())}catch{return null}}
 async function unpackZips(root){let n=0,files=0;const rootMan=await readJSON(root,'projekt.json');const names=[];
-  for await(const [name,h] of root.entries())if(h.kind==='file'&&/\.zip$/i.test(name))names.push(name);
+  for await(const [name,h] of root.entries())if(h.kind==='file'&&/\.zip$/i.test(name)&&!name.startsWith('_'))names.push(name);
   for(const name of names){const f=await (await root.getFileHandle(name)).getFile();let zip;try{zip=await JSZip.loadAsync(f)}catch{continue}
     const mf=zip.file('projekt.json');if(!mf)continue;const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok'||!man.project?.id)continue;
     if(rootMan&&rootMan.project?.id!==man.project.id){toast(`${name} tillhör ett annat projekt – hoppar över`);continue}
