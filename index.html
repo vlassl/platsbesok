@@ -5,118 +5,163 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#ffffff">
-<title>Platsbesök v0.6</title>
+<meta name="theme-color" content="#f4efe3">
+<title>Platsbesök v0.12</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 :root{
-  --ink:#1c1f24; --mute:#6b7280; --line:#d9dce2; --bg:#f3f4f6; --panel:#ffffff;
-  --mark:#e8541f; --mark-old:#4b5c72; --focus:#2563eb;
+  --bg:#f4efe3; --panel:#faf6ea; --ink:#1a1d2e; --mute:#7a715f; --line:#d6cdb5; --line2:#e8e0cb;
+  --accent:#c8911a; --hl:#e6a512; --mark:#b8423a; --mark-old:#1e5b8a; --focus:#c8911a;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace; --serif:'Fraunces',Georgia,serif;
   --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
-  font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
-button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:13px/1.45 var(--mono);overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 input,select,textarea{font:inherit;color:inherit}
 .hidden{display:none!important}
 .view{position:absolute;inset:0;display:flex;flex-direction:column}
+.lbl{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
 
 /* --- Projektlista --- */
-#viewProjects{padding:calc(var(--sat) + 20px) 20px 20px;max-width:640px;margin:0 auto;width:100%;overflow:auto}
-#viewProjects h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px}
-#viewProjects .sub{color:var(--mute);margin:0 0 24px}
-.plist{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
-.pitem{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);
-  border-radius:10px;padding:14px 16px;text-align:left;width:100%;min-height:60px}
-.pitem b{font-weight:600;display:block}.pitem small{color:var(--mute)}
-.pitem .chev{color:var(--mute);font-size:20px}
-.empty{color:var(--mute);padding:28px 0;text-align:center;border:1px dashed var(--line);border-radius:10px}
-.row{display:flex;gap:8px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:9px;
-  background:var(--panel);border:1px solid var(--line);font-weight:500;white-space:nowrap}
-.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
-.btn.accent{background:var(--mark);color:#fff;border-color:var(--mark)}
-.btn.danger{color:#b91c1c;border-color:#f3c5c5}
-.btn.icon{width:44px;padding:0;font-size:20px}
-.btn.sm{min-height:34px;padding:0 10px;font-size:14px}
-.btn:disabled{opacity:.45}
+#viewProjects{padding:calc(var(--sat) + 20px) 18px 20px;max-width:560px;margin:0 auto;width:100%;overflow:auto;
+  background:radial-gradient(ellipse 80% 30% at 50% 0%,rgba(200,145,26,.08),transparent 70%),var(--bg)}
+#viewProjects h1{font:600 30px/1.1 var(--serif);letter-spacing:-.01em;margin:0 0 6px}
+#viewProjects .sub{color:var(--mute);margin:0 0 22px;font-size:11px;letter-spacing:.08em}
+.version{font-size:7px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;text-align:right;font-weight:500;margin:0 0 6px}
+.plist{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.pitem{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1.5px solid var(--line);
+  border-radius:6px;padding:12px 14px;text-align:left;width:100%;min-height:58px}
+.pitem:active{border-color:var(--accent)}
+.pitem b{font:600 16px var(--serif);display:block}.pitem small{color:var(--mute);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.pitem .chev{color:var(--mute);font-size:18px}
+.empty{color:var(--mute);padding:26px 0;text-align:center;border:1.5px dashed var(--line);border-radius:6px;font-size:11px;letter-spacing:.06em}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:0 14px;border-radius:6px;
+  background:var(--bg);border:1.5px solid var(--line);font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:var(--ink)}
+.btn:active{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+.btn.accent{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn.danger{color:var(--mark);border-color:#e3c3bf}
+.btn.icon{width:42px;padding:0;font-size:18px}
+.btn.sm{min-height:32px;padding:0 10px;font-size:10px}
+.btn:disabled{opacity:.4}
 
 /* --- Projektvy --- */
-#top{display:flex;align-items:center;gap:8px;padding:calc(var(--sat) + 8px) 10px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
-#top .title{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#sessBar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
-#sessBar select{flex:1;min-width:0;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff}
-#plans{display:flex;gap:5px;padding:6px 10px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
+#top{display:flex;align-items:center;gap:6px;padding:calc(var(--sat) + 8px) 10px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+#top .title{flex:1;min-width:0;font:600 17px var(--serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sessBar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#sessBar select{flex:1;min-width:0;min-height:38px;border:1.5px solid var(--line);border-radius:6px;padding:0 8px;background:var(--bg);font:500 12px var(--mono)}
+#plans{display:flex;gap:0;padding:0 8px;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
 #plans::-webkit-scrollbar{display:none}
-.ptab{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;flex:0 0 auto;min-height:30px;padding:0 10px;
-  border-radius:7px;border:1px solid var(--line);background:#fff;font-weight:500;font-size:13px;color:var(--mute)}
-.ptab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-#vp{flex:1;position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;user-select:none;-webkit-user-select:none}
+.ptab{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;flex:0 0 auto;min-height:34px;padding:0 12px;
+  border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font:500 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.ptab.on{color:var(--ink);border-bottom-color:var(--accent)}
+#vp{flex:1;position:relative;overflow:hidden;touch-action:none;background:var(--line2);user-select:none;-webkit-user-select:none}
 #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
-#planCanvas{display:block;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+#planCanvas{display:block;background:#fff;box-shadow:0 2px 12px rgba(26,29,46,.18)}
 #markers{position:absolute;inset:0}
+#sketch{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+#sketch polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
+#sketch text{font-family:var(--mono);font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:.25em;stroke-linejoin:round}
+#skBar .dcol{width:30px;min-height:30px}#skBar .dcol.on{border-color:var(--ink)}
+#skBar .dw,#skBar .dtool{background:var(--bg);border-color:var(--line)}#skBar .dw circle{fill:var(--ink)}#skBar .dtool path{stroke:var(--ink)}
+#skBar .dw.on,#skBar .dtool.on{background:var(--accent);border-color:var(--accent)}
 .marker{position:absolute;width:0;height:0;overflow:visible}
 .marker svg{position:absolute;left:-24px;top:-24px;width:48px;height:48px;transform:scale(var(--inv,1));transform-origin:center;overflow:visible}
-.marker .wedge{fill:var(--mark);opacity:.45}
-.marker circle.dot{fill:var(--mark);stroke:#fff;stroke-width:2}
-.marker text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.marker .cbadge{fill:#fff;stroke:var(--mark);stroke-width:1.5}
+.marker .wedge{fill:var(--mark);opacity:.4}
+.marker circle.dot{fill:var(--mark);stroke:var(--panel);stroke-width:2}
+.marker text{fill:var(--panel);font:700 11px var(--mono);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.marker .cbadge{fill:var(--panel);stroke:var(--mark);stroke-width:1.5}
 .marker text.cnt{fill:var(--ink);font-size:8px}
 .marker.old .wedge{fill:var(--mark-old)}.marker.old circle.dot{fill:var(--mark-old)}.marker.old .cbadge{stroke:var(--mark-old)}
-.marker.pending circle.dot{fill:#fff;stroke:var(--mark);stroke-width:3}.marker.pending .wedge{display:none}
+.marker.pending circle.dot{fill:var(--panel);stroke:var(--accent);stroke-width:3}.marker.pending .wedge{display:none}
 #northOv{position:absolute;inset:0;touch-action:none;cursor:grab;z-index:5}
-#northSvg{position:absolute;left:50%;top:50%;width:min(60vw,60vh);height:min(60vw,60vh);transform:translate(-50%,-50%);opacity:.5;overflow:visible;pointer-events:none}
-#northG{stroke:var(--mark);stroke-width:5;stroke-linecap:round;fill:var(--mark)}
-#northG text{stroke:none;font-weight:700;font-size:24px;text-anchor:middle;dominant-baseline:central;font-family:inherit}
-#vp .hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(28,31,36,.9);color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;pointer-events:none;white-space:nowrap}
-#vp .emptyPlan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mute);padding:20px;text-align:center}
-#tools{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:row;gap:8px}
-#tools .btn{box-shadow:0 2px 8px rgba(0,0,0,.18)}
-#compass{position:absolute;left:12px;bottom:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px;min-height:44px;padding:0 12px;
-  display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:14px}
-#compass .needle{display:inline-block;width:16px;height:16px;transition:transform .15s}
-#strip{display:flex;gap:8px;padding:8px 10px calc(var(--sab) + 8px);overflow-x:auto;background:var(--panel);border-top:1px solid var(--line);min-height:96px;align-items:center}
-#strip .th{flex:0 0 auto;width:72px;height:72px;border-radius:8px;overflow:hidden;position:relative;background:#e5e7eb;border:2px solid transparent}
-#strip .th.on{border-color:var(--mark)}
+#northSvg{position:absolute;left:50%;top:50%;width:min(60vw,60vh);height:min(60vw,60vh);transform:translate(-50%,-50%);opacity:.55;overflow:visible;pointer-events:none}
+#northG{stroke:var(--accent);stroke-width:5;stroke-linecap:round;fill:var(--accent)}
+#northG text{stroke:none;font:600 24px var(--serif);text-anchor:middle;dominant-baseline:central}
+#vp .hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(26,29,46,.92);color:var(--panel);padding:8px 14px;border-radius:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;white-space:nowrap}
+#vp .emptyPlan{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mute);padding:20px;text-align:center;font-size:11px;letter-spacing:.06em}
+#tools{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:row;gap:6px}
+#tools .btn{box-shadow:0 1px 3px rgba(26,29,46,.18);background:var(--panel)}
+#tools .btn.accent{background:var(--ink)}
+#compass{position:absolute;left:12px;bottom:12px;background:var(--panel);border:1.5px solid var(--line);border-radius:6px;min-height:42px;padding:0 12px;
+  display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(26,29,46,.18);font-size:11px;letter-spacing:.06em}
+#compass .needle{display:inline-block;width:16px;height:16px;transition:transform .15s;color:var(--mark)}
+#strip{display:flex;gap:6px;padding:8px 10px calc(var(--sab) + 8px);overflow-x:auto;background:var(--panel);border-top:1px solid var(--line);min-height:92px;align-items:center}
+#strip .th{flex:0 0 auto;width:70px;height:70px;border-radius:6px;overflow:hidden;position:relative;background:var(--line2);border:2px solid transparent}
+#strip .th.on{border-color:var(--accent)}
 #strip .th img{width:100%;height:100%;object-fit:cover;display:block}
-#strip .th b{position:absolute;left:4px;top:4px;background:var(--mark);color:#fff;font-size:11px;padding:1px 6px;border-radius:10px}
-#strip .th i{position:absolute;right:4px;bottom:4px;background:rgba(28,31,36,.85);color:#fff;font-style:normal;font-size:11px;padding:1px 6px;border-radius:10px}
-#strip .none{color:var(--mute);font-size:14px;padding:0 6px}
+#strip .th b{position:absolute;left:4px;top:4px;background:var(--mark);color:var(--panel);font-size:10px;padding:1px 6px;border-radius:3px}
+#strip .th i{position:absolute;right:4px;bottom:4px;background:rgba(26,29,46,.85);color:var(--panel);font-style:normal;font-size:10px;padding:1px 5px;border-radius:3px}
+#strip .none{color:var(--mute);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:0 6px}
+
+/* --- Frågor --- */
+.marker.q rect{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.marker.q text{fill:var(--ink);font-size:10px}
+.marker.q.done rect{fill:#a9a291}.marker.q.done text{fill:var(--panel)}
+.marker.qpending rect{fill:var(--panel);stroke:var(--accent);stroke-width:3}
+#qpanel{position:absolute;top:0;right:0;bottom:0;width:300px;max-width:100%;background:var(--panel);border-left:1.5px solid var(--line);z-index:8;display:flex;flex-direction:column;box-shadow:-4px 0 16px rgba(26,29,46,.12)}
+@media(max-width:600px){#qpanel{width:100%;border-left:0}}
+.qhd{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
+#qlist{overflow:auto;flex:1;padding:6px}
+.qi{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:10px 8px;border-bottom:1px solid var(--line2);border-radius:4px}
+.qi:active{background:var(--bg)}
+.qn{flex:0 0 auto;min-width:30px;height:24px;border-radius:4px;background:var(--accent);color:var(--ink);font:700 10px var(--mono);display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.qi.done .qn{background:#a9a291;color:var(--panel)}
+.qi.done .qt{color:var(--mute);text-decoration:line-through}
+.qt{font:600 13px var(--mono);line-height:1.3}
+.qs{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:3px}
+.qimgs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.qimgs .qim{position:relative;width:76px;height:76px;border-radius:4px;overflow:hidden;border:1.5px solid var(--line);background:var(--line2)}
+.qimgs .qim img{width:100%;height:100%;object-fit:cover;display:block}
+.qimgs .qim button{position:absolute;right:2px;top:2px;width:20px;height:20px;border-radius:3px;background:rgba(26,29,46,.85);color:var(--panel);font-size:12px;line-height:1}
+.pastebox{border:1.5px dashed var(--line);border-radius:6px;padding:10px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);text-align:center}
+.chk{display:flex;align-items:center;gap:10px;font:600 12px var(--mono);margin:12px 0 4px}
+.chk input{width:22px;height:22px;accent-color:var(--accent)}
+#lb{position:absolute;inset:0;background:rgba(26,29,46,.9);z-index:70;display:flex;align-items:center;justify-content:center;padding:16px}
+#lb img{max-width:100%;max-height:100%;border-radius:4px}
 
 /* --- Ritläge --- */
-#draw{position:absolute;inset:0;z-index:40;background:#101214;display:flex;flex-direction:column}
-#drawBar{display:flex;gap:6px;padding:calc(var(--sat) + 8px) 10px 8px;background:#1c1f24;align-items:center;overflow-x:auto;flex:0 0 auto}
-#drawBar .btn{background:#2a2f36;border-color:#3a4048;color:#fff}
-#drawBar .btn.primary{background:var(--mark);border-color:var(--mark)}
-.dcol{width:36px;min-height:36px;border-radius:50%;border:3px solid transparent;flex:0 0 auto}
-.dcol.on{border-color:#fff}
+#draw{position:absolute;inset:0;z-index:40;background:#111320;display:flex;flex-direction:column}
+#drawBar{display:flex;flex-wrap:wrap;gap:6px;padding:calc(var(--sat) + 8px) 10px 8px;background:var(--ink);align-items:center;flex:0 0 auto}
+#drawBar .btn{background:#2a2e42;border-color:#3d4258;color:var(--panel)}
+#drawBar .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+#drawBar .sep{width:1px;height:28px;background:#3d4258;margin:0 2px}
+.dcol{width:34px;min-height:34px;border-radius:50%;border:3px solid transparent;flex:0 0 auto}
+.dcol.on{border-color:var(--panel)}
+.dw,.dtool{width:36px;min-height:36px;border-radius:6px;border:1.5px solid #3d4258;background:#2a2e42;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.dw svg,.dtool svg{width:22px;height:22px;display:block}
+.dw circle{fill:var(--panel)}.dtool path{fill:none;stroke:var(--panel);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.dw.on,.dtool.on{background:var(--accent);border-color:var(--accent)}.dw.on circle{fill:var(--ink)}.dtool.on path{stroke:var(--ink)}
+#drawBar .grow{flex:1 1 auto}
 #drawWrap{flex:1;position:relative;overflow:hidden;touch-action:none}
 #drawWrap canvas{position:absolute}
 #dFg{cursor:crosshair}
 
 /* --- Sheet / modal --- */
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:14px 14px 0 0;
-  padding:14px 16px calc(var(--sab) + 14px);box-shadow:0 -6px 24px rgba(0,0,0,.15);z-index:20}
-.sheet h3{margin:0 0 6px;font-size:17px;font-weight:600}
-.sheet p{margin:0 0 12px;color:var(--mute);font-size:14px}
-.overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
-@media(min-width:700px){.overlay{align-items:center}.overlay .modal{border-radius:14px;max-width:560px;width:calc(100% - 40px);max-height:90vh}}
-.modal{background:var(--panel);width:100%;max-height:92vh;border-radius:14px 14px 0 0;overflow:auto;padding:16px 16px calc(var(--sab) + 16px)}
-.modal h3{margin:0 0 10px;font-size:18px;font-weight:600}
-.shot{border:1px solid var(--line);border-radius:10px;padding:8px;margin:10px 0}
-.shot img{width:100%;border-radius:8px;display:block;background:#e5e7eb;max-height:45vh;object-fit:contain}
-.meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--mute);font-size:14px;margin:8px 0}
-.field{margin:10px 0}.field label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
-.field input,.field textarea,.field select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1.5px solid var(--line);border-radius:8px 8px 0 0;
+  padding:14px 16px calc(var(--sab) + 14px);box-shadow:0 -6px 24px rgba(26,29,46,.18);z-index:20}
+.sheet h3{margin:0 0 6px;font:600 17px var(--serif)}
+.sheet p{margin:0 0 12px;color:var(--mute);font-size:11px;letter-spacing:.04em}
+.overlay{position:absolute;inset:0;background:rgba(26,29,46,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.overlay{align-items:center}.overlay .modal{border-radius:8px;max-width:560px;width:calc(100% - 40px);max-height:90vh;border:1.5px solid var(--line)}}
+.modal{background:var(--panel);width:100%;max-height:92vh;border-radius:8px 8px 0 0;overflow:auto;padding:16px 16px calc(var(--sab) + 16px)}
+.modal h3{margin:0 0 10px;font:600 19px var(--serif)}
+.shot{border:1.5px solid var(--line);border-radius:6px;padding:8px;margin:10px 0;background:var(--bg)}
+.shot img{width:100%;border-radius:4px;display:block;background:var(--line2);max-height:45vh;object-fit:contain}
+.meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--mute);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin:8px 0}
+.field{margin:10px 0}.field label{display:block;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;min-height:42px;border:1.5px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--bg);font:500 14px var(--mono)}
 .field textarea{min-height:70px;resize:vertical}
 .modal .row{margin-top:10px}
-#toast{position:absolute;left:50%;bottom:calc(var(--sab) + 110px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:20px;
-  font-size:14px;z-index:50;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast{position:absolute;left:50%;bottom:calc(var(--sab) + 108px);transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:6px;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;z-index:50;pointer-events:none;opacity:0;transition:opacity .2s;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
-#busy{position:absolute;inset:0;background:rgba(255,255,255,.7);z-index:60;display:flex;align-items:center;justify-content:center;font-weight:500}
+#busy{position:absolute;inset:0;background:rgba(250,246,234,.72);z-index:60;display:flex;align-items:center;justify-content:center;font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -124,14 +169,16 @@ input,select,textarea{font:inherit;color:inherit}
 
 <!-- Projektlista -->
 <div id="viewProjects" class="view">
+  <div class="version">Platsbesök · v0.12</div>
   <h1>Platsbesök</h1>
   <p class="sub">Foton kopplade till punkter på planritningar.</p>
   <div id="plist" class="plist"></div>
   <div class="row">
     <button class="btn primary" id="btnNewProject">Nytt projekt</button>
     <button class="btn" id="btnImport">Öppna / lägg till zip</button>
+    <button class="btn" id="btnImportDir">Öppna mapp</button>
   </div>
-  <p class="sub" style="margin-top:28px;font-size:13px">Allt sparas lokalt i den här webbläsaren. Zip-filer med samma projekt sammanfogas vid import — inget skrivs över. Foton sparas i originalkvalitet. v0.6</p>
+  <p class="sub" style="margin-top:26px;font-size:10px">Allt sparas lokalt i den här webbläsaren. Zip eller mapp med samma projekt sammanfogas vid import — inget skrivs över. Foton sparas i originalkvalitet.</p>
 </div>
 
 <!-- Projektvy -->
@@ -139,6 +186,7 @@ input,select,textarea{font:inherit;color:inherit}
   <div id="top">
     <button class="btn icon" id="btnBack" aria-label="Tillbaka">‹</button>
     <div class="title" id="projTitle"></div>
+    <button class="btn" id="btnQPanel" aria-label="Frågelista">?<span id="qCount"></span></button>
     <button class="btn" id="btnExport">Exportera</button>
     <button class="btn icon" id="btnProjMenu" aria-label="Projektmeny">⋯</button>
   </div>
@@ -151,6 +199,7 @@ input,select,textarea{font:inherit;color:inherit}
   <div id="vp">
     <div id="world">
       <canvas id="planCanvas"></canvas>
+      <svg id="sketch"></svg>
       <div id="markers"></div>
     </div>
     <div id="northOv" class="hidden"><svg id="northSvg" viewBox="-50 -50 100 100"><g id="northG"><line x1="0" y1="44" x2="0" y2="-30"/><path d="M0,-46 L-10,-26 L0,-32 L10,-26 Z"/><circle r="4"/><text y="14">N</text></g></svg></div>
@@ -163,11 +212,35 @@ input,select,textarea{font:inherit;color:inherit}
     <div id="tools">
       <button class="btn icon" id="btnPlanMenu" aria-label="Planinställningar">⚙</button>
       <button class="btn icon" id="btnFit" aria-label="Anpassa vy">⤢</button>
-      <button class="btn accent" id="btnAddMode">＋ Ny punkt</button>
+      <button class="btn icon" id="btnAddQ" aria-label="Ny fråga">?</button>
+      <button class="btn" id="btnSketch">Rita</button>
+      <button class="btn accent" id="btnAddMode">＋ Punkt</button>
+    </div>
+    <div id="qpanel" class="hidden">
+      <div class="qhd"><span class="lbl">Frågor inför besök</span><button class="btn sm" id="qClose">Stäng</button></div>
+      <div id="qlist"></div>
     </div>
   </div>
   <div id="strip"></div>
 
+  <div id="skBar" class="sheet hidden">
+    <div class="row" style="align-items:center">
+      <button class="dcol on" data-c="#b8423a" style="background:#b8423a" aria-label="Röd"></button>
+      <button class="dcol" data-c="#e6a512" style="background:#e6a512" aria-label="Amber"></button>
+      <button class="dcol" data-c="#1e5b8a" style="background:#1e5b8a" aria-label="Blå"></button>
+      <button class="dcol" data-c="#1a1d2e" style="background:#1a1d2e" aria-label="Bläck"></button>
+      <span class="sep" style="width:1px;height:24px;background:var(--line)"></span>
+      <button class="dw" data-w="0" aria-label="Fin"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="2.2"/></svg></button>
+      <button class="dw on" data-w="1" aria-label="Medel"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="4.5"/></svg></button>
+      <button class="dw" data-w="2" aria-label="Grov"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="7.5"/></svg></button>
+      <span class="sep" style="width:1px;height:24px;background:var(--line)"></span>
+      <button class="btn sm" id="skText">Text</button>
+      <button class="btn sm" id="skFinger">Finger</button>
+      <button class="btn sm" id="skUndo">Ångra</button>
+      <button class="btn sm" id="skClear">Rensa</button>
+      <button class="btn sm primary" id="skDone">Klar</button>
+    </div>
+  </div>
   <div id="northSheet" class="sheet hidden">
     <h3>Ställ in norr</h3>
     <p>Dra i pilen så den pekar mot norr på ritningen. Nu: <b id="northVal">0°</b></p>
@@ -190,14 +263,19 @@ input,select,textarea{font:inherit;color:inherit}
 <!-- Ritläge -->
 <div id="draw" class="hidden">
   <div id="drawBar">
-    <button class="dcol on" data-c="#e8341f" style="background:#e8341f" aria-label="Röd"></button>
-    <button class="dcol" data-c="#ffd60a" style="background:#ffd60a" aria-label="Gul"></button>
-    <button class="dcol" data-c="#2563eb" style="background:#2563eb" aria-label="Blå"></button>
-    <button class="dcol" data-c="#ffffff" style="background:#fff" aria-label="Vit"></button>
-    <button class="btn sm" id="dWidth">Medel</button>
+    <button class="dcol on" data-c="#b8423a" style="background:#b8423a" aria-label="Röd"></button>
+    <button class="dcol" data-c="#e6a512" style="background:#e6a512" aria-label="Amber"></button>
+    <button class="dcol" data-c="#1e5b8a" style="background:#1e5b8a" aria-label="Blå"></button>
+    <button class="dcol" data-c="#faf6ea" style="background:#faf6ea" aria-label="Papper"></button>
+    <span class="sep"></span>
+    <button class="dw" data-w="0" aria-label="Fin linje"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="2.2"/></svg></button>
+    <button class="dw on" data-w="1" aria-label="Medel linje"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="4.5"/></svg></button>
+    <button class="dw" data-w="2" aria-label="Grov linje"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="7.5"/></svg></button>
+    <span class="sep"></span>
+    <button class="dtool" id="dErase" aria-label="Sudda"><svg viewBox="0 0 22 22"><path d="M3 15.5 12.5 6a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L11 19.5H7.5L3 15z M8.5 10.5l5.5 5.5"/></svg></button>
+    <span class="grow"></span>
     <button class="btn sm" id="dUndo">Ångra</button>
-    <button class="btn sm" id="dClear">Rensa allt</button>
-    <span style="flex:1"></span>
+    <button class="btn sm" id="dClear">Rensa</button>
     <button class="btn sm" id="dCancel">Avbryt</button>
     <button class="btn sm primary" id="dSave">Spara</button>
   </div>
@@ -208,6 +286,8 @@ input,select,textarea{font:inherit;color:inherit}
 <input type="file" id="filePick" accept="image/*" class="hidden">
 <input type="file" id="filePdf" accept="application/pdf" multiple class="hidden">
 <input type="file" id="fileZip" accept=".zip,application/zip" class="hidden">
+<input type="file" id="fileDir" webkitdirectory multiple class="hidden">
+<input type="file" id="fileQImg" accept="image/*" multiple class="hidden">
 
 <div id="modalHost"></div>
 <div id="toast"></div>
@@ -232,9 +312,9 @@ const shotBlob=sh=>sh.anno||sh.blob;
 
 /* ---------- IndexedDB ---------- */
 let db;
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('platsbesok',1);
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('platsbesok',2);
   r.onupgradeneeded=e=>{const d=e.target.result;
-    for(const s of ['projects','files','plans','sessions','points']){const st=d.createObjectStore(s,{keyPath:'id'});
+    for(const s of ['projects','files','plans','sessions','points','questions']){if(d.objectStoreNames.contains(s))continue;const st=d.createObjectStore(s,{keyPath:'id'});
       if(s!=='projects')st.createIndex('projectId','projectId');if(s==='points')st.createIndex('sessionId','sessionId')}};
   r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error)})}
 function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);const req=fn(t.objectStore(store));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error)})}
@@ -244,7 +324,7 @@ const getAll=s=>tx(s,'readonly',st=>st.getAll());
 const byProject=(s,pid)=>tx(s,'readonly',st=>st.index('projectId').getAll(pid));
 
 /* ---------- State ---------- */
-const S={project:null,files:[],plans:[],sessions:[],points:[],planId:null,sessionId:null,mode:'view',pending:null,showAll:true};
+const S={project:null,files:[],plans:[],sessions:[],points:[],questions:[],planId:null,sessionId:null,mode:'view',pending:null,showAll:true};
 const V={z:1,px:0,py:0};
 const pdfCache=new Map(), canvasCache=new Map();
 let lastHeading=null, compassOn=false, capturedHeading=null, addTarget=null;
@@ -261,7 +341,17 @@ async function showProjects(){
 }
 $('#btnNewProject').onclick=async()=>{const name=prompt('Projektnamn:');if(!name)return;const p={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',p);openProject(p)};
 $('#btnImport').onclick=()=>$('#fileZip').click();
-$('#fileZip').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await importZip(f)};
+$('#btnImportDir').onclick=async()=>{
+  if(window.showDirectoryPicker){let h;try{h=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Kunde inte öppna mappen: '+e.message);return}
+    busy(true);let z={n:0,files:0};try{z=await unpackZips(h)}catch(e){console.error(e);toast('Kunde inte packa upp zip: '+e.message)}finally{busy(false)}
+    const ok=await importFrom(dirSource(h));
+    if(ok&&S.project){try{await writePath(h,'rapport.html',await buildReport(buildManifest(null).flat))}catch(e){console.error(e)}}
+    if(z.n)toast(`${z.n} zip uppackade (${z.files} filer), rapport.html uppdaterad`)}
+  else $('#fileDir').click()};
+$('#fileDir').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
+  if(!fs.some(f=>f.webkitRelativePath)){toast('Mappval stöds inte i denna webbläsare (kräver iOS 18.4+)');return}
+  await importFrom(listSource(fs))};
+$('#fileZip').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f){try{await importFrom(zipSource(await JSZip.loadAsync(f)))}catch(err){toast('Import misslyckades: '+err.message)}}};
 
 /* ---------- Projektvy ---------- */
 async function openProject(p){
@@ -271,10 +361,11 @@ async function openProject(p){
   if(!S.sessions.length)await newSession(true);
   S.sessionId=S.sessions[S.sessions.length-1].id;
   S.planId=S.plans[0]?.id||null;
-  renderSessions();renderPlans();await showPlan();renderStrip();
+  renderSessions();renderPlans();await showPlan();renderStrip();renderQList();
 }
 async function loadProject(){const pid=S.project.id;
-  [S.files,S.plans,S.sessions,S.points]=await Promise.all([byProject('files',pid),byProject('plans',pid),byProject('sessions',pid),byProject('points',pid)]);
+  [S.files,S.plans,S.sessions,S.points,S.questions]=await Promise.all([byProject('files',pid),byProject('plans',pid),byProject('sessions',pid),byProject('points',pid),byProject('questions',pid)]);
+  S.questions.sort((a,b)=>a.created.localeCompare(b.created));
   S.plans.sort((a,b)=>(a.order??0)-(b.order??0)||a.name.localeCompare(b.name));
   S.sessions.sort((a,b)=>a.created.localeCompare(b.created));
   S.points.sort((a,b)=>a.created.localeCompare(b.created));
@@ -289,7 +380,7 @@ $('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
   if(a==='rename'){const n=prompt('Projektnamn:',S.project.name);if(n){S.project.name=n.trim();await put('projects',S.project);$('#projTitle').textContent=S.project.name}}
   if(a==='pdf')$('#filePdf').click();
   if(a==='del'&&confirm(`Radera "${S.project.name}" med alla planer och foton?`)){
-    for(const s of ['files','plans','sessions','points'])for(const o of await byProject(s,S.project.id))await del(s,o.id);
+    for(const s of ['files','plans','sessions','points','questions'])for(const o of await byProject(s,S.project.id))await del(s,o.id);
     await del('projects',S.project.id);showProjects()}
 });
 
@@ -300,11 +391,11 @@ async function newSession(silent){const d=today();let label='';
   if(!silent){const v=prompt('Tilläggsnamn (valfritt), t.ex. Inventering hyresgäst 1:','');if(v===null)return;label=v.trim()}
   const seq=S.sessions.filter(x=>x.date===d).length+1;
   const s={id:uid(),projectId:S.project.id,date:d,seq,label,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
-  if(!silent){renderSessions();renderMarkers();renderStrip()}return s}
+  if(!silent){renderSessions();renderMarkers();renderStrip();renderSketch()}return s}
 function renderSessions(){const sel=$('#sessSel');sel.innerHTML='';
   for(const s of [...S.sessions].reverse()){const o=document.createElement('option');o.value=s.id;o.textContent=sessName(s);sel.appendChild(o)}
   sel.value=S.sessionId}
-$('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStrip()};
+$('#sessSel').onchange=e=>{S.sessionId=e.target.value;renderMarkers();renderStrip();renderSketch()};
 $('#btnNewSess').onclick=()=>newSession(false);
 $('#btnSessMenu').onclick=()=>{const s=curSession();const pts=sessionPoints(s.id);const n=pts.reduce((a,p)=>a+p.photos.length,0);
   modal(`<h3>${esc(sessName(s))}</h3><p class="meta">${n} foton</p>
@@ -350,7 +441,7 @@ async function getPlanCanvas(plan){if(canvasCache.has(plan.id))return canvasCach
 async function showPlan(){const plan=curPlan();const cv=$('#planCanvas');
   $('#emptyPlan').classList.toggle('hidden',!!plan);$('#tools').classList.toggle('hidden',!plan);
   if(!plan){cv.width=cv.height=0;$('#markers').innerHTML='';return}
-  busy(true);try{const src=await getPlanCanvas(plan);cv.width=src.width;cv.height=src.height;cv.getContext('2d').drawImage(src,0,0);fitView();renderMarkers()}
+  busy(true);try{const src=await getPlanCanvas(plan);cv.width=src.width;cv.height=src.height;cv.getContext('2d').drawImage(src,0,0);fitView();renderMarkers();renderSketch()}
   catch(e){console.error(e);toast('Kunde inte rendera planen')}finally{busy(false)}}
 $('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
   modal(`<h3>${esc(p.name)}</h3>
@@ -360,9 +451,9 @@ $('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
   if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;await put('plans',p);renderPlans();renderStrip()}
   if(a==='north')startNorth();
   if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!confirm(`Ta bort "${p.name}"${n?` och ${n} punkter på den`:''}?`))return;
-    for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);await del('plans',p.id);
+    for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);for(const x of S.questions.filter(x=>x.planId===p.id))await del('questions',x.id);await del('plans',p.id);
     if(!S.plans.some(q=>q.fileId===p.fileId&&q.id!==p.id)){await del('files',p.fileId)}
-    canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip()}
+    canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip();renderQList()}
 })};
 
 /* ---------- Norrpil ---------- */
@@ -386,15 +477,18 @@ function fitView(){const cv=$('#planCanvas');if(!cv.width)return;const r=vp.getB
 $('#btnFit').onclick=fitView;window.addEventListener('resize',()=>{if(!$('#viewProject').classList.contains('hidden'))fitView()});
 const ptrs=new Map();let g=null;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
-vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet,#northOv'))return;vp.setPointerCapture(e.pointerId);
+vp.addEventListener('pointerdown',e=>{if(e.target.closest('#tools,#compass,.sheet,#northOv,#qpanel'))return;vp.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1)g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
-  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];g={type:'pinch',d0:dist(a,b),z0:V.z,px0:V.px,py0:V.py,c0:mid(a,b)}}});
+  if(ptrs.size===1){g={type:'pan',sx:e.clientX,sy:e.clientY,px:V.px,py:V.py,moved:false,target:e.target};
+    if(S.mode==='sketch'&&!SK.text&&curPlan()&&(e.pointerType!=='touch'||SK.finger))skStart(e)}
+  else if(ptrs.size===2){skCancel();const [a,b]=[...ptrs.values()];g={type:'pinch',d0:dist(a,b),z0:V.z,px0:V.px,py0:V.py,c0:mid(a,b)}}});
 vp.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId)||!g)return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(SK.cur&&SK.cur.pid===e.pointerId&&ptrs.size===1){skMove(e);return}
   if(g.type==='pan'&&ptrs.size===1){const dx=e.clientX-g.sx,dy=e.clientY-g.sy;if(Math.hypot(dx,dy)>8)g.moved=true;if(g.moved){V.px=g.px+dx;V.py=g.py+dy;applyView()}}
   else if(g.type==='pinch'&&ptrs.size===2){const [a,b]=[...ptrs.values()];const r=vp.getBoundingClientRect();const z=clamp(g.z0*dist(a,b)/g.d0,.05,12);
     const wx=(g.c0.x-r.left-g.px0)/g.z0,wy=(g.c0.y-r.top-g.py0)/g.z0;const c=mid(a,b);V.z=z;V.px=c.x-r.left-wx*z;V.py=c.y-r.top-wy*z;applyView()}});
-function endPtr(e){const tap=g&&g.type==='pan'&&!g.moved&&ptrs.size===1;ptrs.delete(e.pointerId);
+function endPtr(e){if(SK.cur&&SK.cur.pid===e.pointerId){skEnd();ptrs.delete(e.pointerId);g=ptrs.size?g:null;return}
+  const tap=g&&g.type==='pan'&&!g.moved&&ptrs.size===1;ptrs.delete(e.pointerId);
   if(tap)onTap(e,g.target);
   if(ptrs.size===1){const [p]=[...ptrs.values()];g={type:'pan',sx:p.x,sy:p.y,px:V.px,py:V.py,moved:true}}else if(!ptrs.size)g=null}
 vp.addEventListener('pointerup',endPtr);vp.addEventListener('pointercancel',endPtr);
@@ -402,16 +496,24 @@ vp.addEventListener('wheel',e=>{e.preventDefault();const r=vp.getBoundingClientR
   const wx=(e.clientX-r.left-V.px)/V.z,wy=(e.clientY-r.top-V.py)/V.z;V.z=z;V.px=e.clientX-r.left-wx*z;V.py=e.clientY-r.top-wy*z;applyView()},{passive:false});
 function onTap(e,target){const mk=target.closest&&target.closest('.marker');
   if(mk&&mk.dataset.id){openPoint(mk.dataset.id);return}
-  if(S.mode!=='add'||!curPlan())return;
+  if(mk&&mk.dataset.q){openQuestion(mk.dataset.q);return}
+  if((S.mode!=='add'&&S.mode!=='addq'&&S.mode!=='sketch')||!curPlan())return;
   const r=vp.getBoundingClientRect(),cv=$('#planCanvas');const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;
   if(x<0||x>1||y<0||y>1)return;
+  if(S.mode==='sketch'){if(SK.text){const t=prompt('Text:');if(t&&t.trim()){skAdd({t:'text',x,y,text:t.trim(),c:SK.color})}}return}
+  if(S.mode==='addq'){openQuestion(null,{x,y,planId:S.planId});return}
   S.pending={x,y,planId:S.planId};renderMarkers();$('#pendSheet').classList.remove('hidden');$('#hint').classList.add('hidden');updateCompassUI()}
 
 /* ---------- Lägga till foton ---------- */
-function setMode(m){S.mode=m;$('#btnAddMode').textContent=m==='add'?'Klar':'＋ Ny punkt';$('#btnAddMode').classList.toggle('accent',m!=='add');
-  $('#hint').classList.toggle('hidden',m!=='add');if(m!=='add')cancelPending();if(m==='add'&&!compassOn)enableCompass()}
+function setMode(m){S.mode=m;$('#btnAddMode').textContent=m==='add'?'Klar':'＋ Punkt';$('#btnAddMode').classList.toggle('accent',m!=='add');
+  $('#btnAddQ').classList.toggle('primary',m==='addq');$('#btnSketch').classList.toggle('primary',m==='sketch');
+  $('#skBar').classList.toggle('hidden',m!=='sketch');$('#strip').classList.toggle('hidden',m==='sketch');
+  $('#hint').textContent=m==='addq'?'Tryck på planen där frågan gäller':m==='sketch'?(SK.text?'Tryck där texten ska stå':'Rita på planen – två fingrar panorerar'):'Tryck på planen där fotot tas';
+  $('#hint').classList.toggle('hidden',m==='view');if(m!=='add')cancelPending();if(m==='add'&&!compassOn)enableCompass()}
+$('#btnSketch').onclick=()=>setMode(S.mode==='sketch'?'view':'sketch');
 $('#btnAddMode').onclick=()=>setMode(S.mode==='add'?'view':'add');
-function cancelPending(){S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();if(S.mode==='add')$('#hint').classList.remove('hidden')}
+$('#btnAddQ').onclick=()=>setMode(S.mode==='addq'?'view':'addq');
+function cancelPending(){S.pending=null;$('#pendSheet').classList.add('hidden');renderMarkers();if(S.mode!=='view')$('#hint').classList.remove('hidden')}
 $('#btnPendCancel').onclick=cancelPending;
 $('#btnShoot').onclick=()=>{capturedHeading=lastHeading;$('#fileCam').click()};
 $('#btnPick').onclick=()=>{capturedHeading=lastHeading;$('#filePick').click()};
@@ -427,6 +529,36 @@ $('#fileCam').onchange=onPhoto;$('#filePick').onchange=onPhoto;
 async function makeThumb(blob){let bmp;try{bmp=await createImageBitmap(blob,{imageOrientation:'from-image'})}catch{bmp=await createImageBitmap(blob)}
   const s=Math.min(1,320/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
   c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);bmp.close&&bmp.close();return new Promise(r=>c.toBlob(r,'image/jpeg',.7))}
+
+/* ---------- Rita på planen (per besök) ---------- */
+const SK={color:'#b8423a',wIdx:1,text:false,finger:true,cur:null};
+const skW=[0.0012,0.0025,0.005]; // linjebredd som andel av planens bredd
+function skData(){const s=curSession();if(!s)return null;s.sketches=s.sketches||{};return s.sketches[S.planId]=s.sketches[S.planId]||[]}
+function renderSketch(){const svg=$('#sketch'),cv=$('#planCanvas');const plan=curPlan();if(!plan||!cv.width){svg.innerHTML='';return}
+  svg.setAttribute('width',cv.width);svg.setAttribute('height',cv.height);svg.setAttribute('viewBox',`0 0 ${cv.width} ${cv.height}`);
+  const s=curSession();const items=(s&&s.sketches&&s.sketches[plan.id])||[];svg.innerHTML=items.map(it=>skSVG(it,cv.width,cv.height)).join('')}
+function skSVG(it,w,h){if(it.t==='text')return `<text x="${it.x*w}" y="${it.y*h}" fill="${it.c}" font-size="${Math.round(w*0.014)}">${esc(it.text)}</text>`;
+  return `<polyline stroke="${it.c}" stroke-width="${it.w*w}" points="${it.pts.map(p=>(p[0]*w).toFixed(1)+','+(p[1]*h).toFixed(1)).join(' ')}"/>`}
+function skPos(e){const r=vp.getBoundingClientRect(),cv=$('#planCanvas');return [(e.clientX-r.left-V.px)/V.z/cv.width,(e.clientY-r.top-V.py)/V.z/cv.height]}
+function skStart(e){const cv=$('#planCanvas');SK.cur={pid:e.pointerId,item:{t:'line',c:SK.color,w:skW[SK.wIdx],pts:[skPos(e)]},el:null};
+  const el=document.createElementNS('http://www.w3.org/2000/svg','polyline');el.setAttribute('stroke',SK.color);el.setAttribute('stroke-width',SK.cur.item.w*cv.width);$('#sketch').appendChild(el);SK.cur.el=el}
+function skMove(e){const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];const cv=$('#planCanvas');
+  for(const ev of evs)SK.cur.item.pts.push(skPos(ev));
+  SK.cur.el.setAttribute('points',SK.cur.item.pts.map(p=>(p[0]*cv.width).toFixed(1)+','+(p[1]*cv.height).toFixed(1)).join(' '))}
+function skCancel(){if(!SK.cur)return;SK.cur.el.remove();SK.cur=null}
+async function skEnd(){if(!SK.cur)return;const it=SK.cur.item;SK.cur.el.remove();SK.cur=null;if(it.pts.length<2)return;
+  // förenkla: hoppa över punkter närmare än ~0.5 px vid full upplösning
+  const cv=$('#planCanvas'),out=[it.pts[0]];for(const p of it.pts){const q=out[out.length-1];if(Math.hypot((p[0]-q[0])*cv.width,(p[1]-q[1])*cv.height)>1.5)out.push(p)}
+  it.pts=out.map(p=>[+p[0].toFixed(5),+p[1].toFixed(5)]);await skAdd(it)}
+async function skAdd(it){const d=skData();if(!d)return;d.push(it);const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()}
+document.querySelectorAll('#skBar .dcol').forEach(b=>b.onclick=()=>{SK.color=b.dataset.c;document.querySelectorAll('#skBar .dcol').forEach(x=>x.classList.toggle('on',x===b))});
+document.querySelectorAll('#skBar .dw').forEach(b=>b.onclick=()=>{SK.wIdx=+b.dataset.w;document.querySelectorAll('#skBar .dw').forEach(x=>x.classList.toggle('on',x===b))});
+$('#skText').onclick=()=>{SK.text=!SK.text;$('#skText').classList.toggle('primary',SK.text);setMode('sketch')};
+$('#skFinger').onclick=()=>{SK.finger=!SK.finger;$('#skFinger').classList.toggle('primary',SK.finger)};
+$('#skFinger').classList.add('primary');
+$('#skUndo').onclick=async()=>{const d=skData();if(!d||!d.length)return;d.pop();const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()};
+$('#skClear').onclick=async()=>{const d=skData();if(!d||!d.length)return;if(!confirm('Rensa allt ritat på denna plan för detta besök?'))return;d.length=0;const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()};
+$('#skDone').onclick=()=>{SK.text=false;$('#skText').classList.remove('primary');setMode('view')};
 
 /* ---------- Kompass ---------- */
 function onOrient(e){let h=null;if(e.webkitCompassHeading!=null)h=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)h=(360-e.alpha)%360;
@@ -451,6 +583,8 @@ function renderMarkers(){const el=$('#markers');el.innerHTML='';const plan=curPl
   const pts=S.points.filter(p=>p.planId===plan.id&&(S.showAll||p.sessionId===S.sessionId));
   for(const p of pts){const d=document.createElement('div');d.className='marker'+(p.sessionId===S.sessionId?'':' old');d.dataset.id=p.id;
     d.style.left=p.x*100+'%';d.style.top=p.y*100+'%';d.innerHTML=markerSVG(p,plan,false);el.appendChild(d)}
+  for(const q of S.questions.filter(q=>q.planId===plan.id)){const d=document.createElement('div');d.className='marker q'+(q.done?' done':'');d.dataset.q=q.id;
+    d.style.left=q.x*100+'%';d.style.top=q.y*100+'%';d.innerHTML=`<svg viewBox="-24 -24 48 48"><rect x="-13" y="-11" width="26" height="22" rx="4"/><text>?${qIndex(q)}</text></svg>`;el.appendChild(d)}
   if(S.pending&&S.pending.planId===plan.id){const d=document.createElement('div');d.className='marker pending';d.style.left=S.pending.x*100+'%';d.style.top=S.pending.y*100+'%';
     d.innerHTML=markerSVG(null,plan,true);el.appendChild(d)}}
 const urlCache=new Map();
@@ -505,11 +639,12 @@ function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const pl
 const DW={};
 async function startDraw(point,shot){busy(true);
   try{const base=shotBlob(shot);let bmp;try{bmp=await createImageBitmap(base,{imageOrientation:'from-image'})}catch{bmp=await createImageBitmap(base)}
-    Object.assign(DW,{point,shot,bmp,strokes:[],color:'#e8341f',wIdx:1,cur:null});
+    Object.assign(DW,{point,shot,bmp,strokes:[],color:'#b8423a',wIdx:1,cur:null,erase:false});
     const bg=$('#dBg'),fg=$('#dFg');bg.width=fg.width=bmp.width;bg.height=fg.height=bmp.height;
     bg.getContext('2d').drawImage(bmp,0,0);fg.getContext('2d').clearRect(0,0,fg.width,fg.height);
     $('#draw').classList.remove('hidden');layoutDraw();
-    document.querySelectorAll('.dcol').forEach(b=>b.classList.toggle('on',b.dataset.c==='#e8341f'));$('#dWidth').textContent='Medel'}
+    document.querySelectorAll('.dcol').forEach(b=>b.classList.toggle('on',b.dataset.c==='#b8423a'));
+    document.querySelectorAll('.dw').forEach(b=>b.classList.toggle('on',b.dataset.w==='1'));$('#dErase').classList.remove('on')}
   finally{busy(false)}}
 function layoutDraw(){const w=$('#drawWrap');if(!DW.bmp||$('#draw').classList.contains('hidden'))return;
   const r=w.getBoundingClientRect();const s=Math.min(r.width/DW.bmp.width,r.height/DW.bmp.height)*.98;DW.s=s;
@@ -517,17 +652,18 @@ function layoutDraw(){const w=$('#drawWrap');if(!DW.bmp||$('#draw').classList.co
     c.style.left=(r.width-DW.bmp.width*s)/2+'px';c.style.top=(r.height-DW.bmp.height*s)/2+'px'}}
 window.addEventListener('resize',layoutDraw);
 const dWidths=[4,9,18];
-document.querySelectorAll('.dcol').forEach(b=>b.onclick=()=>{DW.color=b.dataset.c;document.querySelectorAll('.dcol').forEach(x=>x.classList.toggle('on',x===b))});
-$('#dWidth').onclick=()=>{DW.wIdx=(DW.wIdx+1)%3;$('#dWidth').textContent=['Fin','Medel','Grov'][DW.wIdx]};
+document.querySelectorAll('.dcol').forEach(b=>b.onclick=()=>{DW.color=b.dataset.c;DW.erase=false;$('#dErase').classList.remove('on');document.querySelectorAll('.dcol').forEach(x=>x.classList.toggle('on',x===b))});
+document.querySelectorAll('.dw').forEach(b=>b.onclick=()=>{DW.wIdx=+b.dataset.w;document.querySelectorAll('.dw').forEach(x=>x.classList.toggle('on',x===b))});
+$('#dErase').onclick=()=>{DW.erase=!DW.erase;$('#dErase').classList.toggle('on',DW.erase);document.querySelectorAll('.dcol').forEach(x=>x.classList.toggle('on',!DW.erase&&x.dataset.c===DW.color))};
 function dPos(e){const r=$('#dFg').getBoundingClientRect();return {x:(e.clientX-r.left)/DW.s,y:(e.clientY-r.top)/DW.s,p:e.pressure||.5}}
-function strokeSeg(ctx,st,a,b){ctx.strokeStyle=st.color;ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.lineWidth=st.w*(0.5+((a.p+b.p)/2));ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
-function redrawStrokes(){const ctx=$('#dFg').getContext('2d');ctx.clearRect(0,0,$('#dFg').width,$('#dFg').height);
-  for(const st of DW.strokes)for(let i=1;i<st.pts.length;i++)strokeSeg(ctx,st,st.pts[i-1],st.pts[i])}
+function strokeSeg(ctx,st,a,b){ctx.globalCompositeOperation=st.erase?'destination-out':'source-over';ctx.strokeStyle=st.color;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.lineWidth=st.w*(st.erase?2.5:(0.5+((a.p+b.p)/2)));ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+function redrawStrokes(){const ctx=$('#dFg').getContext('2d');ctx.globalCompositeOperation='source-over';ctx.clearRect(0,0,$('#dFg').width,$('#dFg').height);
+  for(const st of DW.strokes)for(let i=1;i<st.pts.length;i++)strokeSeg(ctx,st,st.pts[i-1],st.pts[i]);ctx.globalCompositeOperation='source-over'}
 const dw=$('#drawWrap');
 dw.addEventListener('pointerdown',e=>{if(DW.cur)return;dw.setPointerCapture(e.pointerId);
   const base=dWidths[DW.wIdx]*Math.max(1,($('#dFg').width/1500));
-  DW.cur={pid:e.pointerId,color:DW.color,w:base,pts:[dPos(e)]}});
+  DW.cur={pid:e.pointerId,color:DW.color,w:base,erase:DW.erase,pts:[dPos(e)]}});
 dw.addEventListener('pointermove',e=>{if(!DW.cur||e.pointerId!==DW.cur.pid)return;
   const ctx=$('#dFg').getContext('2d');const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
   for(const ev of evs){const pt=dPos(ev);const prev=DW.cur.pts[DW.cur.pts.length-1];DW.cur.pts.push(pt);strokeSeg(ctx,DW.cur,prev,pt)}});
@@ -540,13 +676,64 @@ $('#dSave').onclick=()=>closeDraw(true);
 async function closeDraw(save){const p=DW.point,sh=DW.shot;
   if(save&&DW.strokes.length){busy(true);
     try{const c=document.createElement('canvas');c.width=DW.bmp.width;c.height=DW.bmp.height;const ctx=c.getContext('2d');
-      ctx.drawImage($('#dBg'),0,0);ctx.drawImage($('#dFg'),0,0);
+      ctx.drawImage($('#dBg'),0,0);ctx.globalCompositeOperation='source-over';ctx.drawImage($('#dFg'),0,0);
       const isPng=sh.blob.type==='image/png';
       sh.anno=await new Promise(r=>c.toBlob(r,isPng?'image/png':'image/jpeg',.92));
       sh.thumb=await makeThumb(sh.anno);dropURL(sh.id);await put('points',p);renderMarkers();renderStrip();toast('Ritning sparad')}
     finally{busy(false)}}
   DW.bmp&&DW.bmp.close&&DW.bmp.close();DW.bmp=null;DW.cur=null;DW.strokes=[];
   $('#draw').classList.add('hidden');openPoint(p.id)}
+
+/* ---------- Frågor ---------- */
+const qIndex=q=>S.questions.indexOf(q)+1;
+$('#btnQPanel').onclick=()=>{$('#qpanel').classList.toggle('hidden');renderQList()};
+$('#qClose').onclick=()=>$('#qpanel').classList.add('hidden');
+function renderQList(){const open=S.questions.filter(q=>!q.done).length;$('#qCount').textContent=open?open:'';
+  const el=$('#qlist');el.innerHTML='';
+  if(!S.questions.length){el.innerHTML='<div class="empty" style="margin:8px">Inga frågor. Tryck ? nere till höger och sedan på planen.</div>';return}
+  const list=[...S.questions].sort((a,b)=>(a.done-b.done)||a.created.localeCompare(b.created));
+  for(const q of list){const pl=S.plans.find(x=>x.id===q.planId);const b=document.createElement('button');b.className='qi'+(q.done?' done':'');
+    b.innerHTML=`<span class="qn">?${qIndex(q)}</span><span><div class="qt">${esc(q.title||'(ingen rubrik)')}</div><div class="qs">${esc(pl?.name||'')}${q.images.length?' · '+q.images.length+' bild':''}${q.done?' · besvarad':''}</div></span>`;
+    b.onclick=async()=>{if(q.planId!==S.planId){S.planId=q.planId;renderPlans();await showPlan();renderStrip()}centerOn(q);openQuestion(q.id)};el.appendChild(b)}}
+function showLightbox(blob){const u=URL.createObjectURL(blob);const d=document.createElement('div');d.id='lb';d.innerHTML=`<img src="${u}" alt="">`;
+  d.onclick=()=>{URL.revokeObjectURL(u);d.remove()};document.body.appendChild(d)}
+function openQuestion(id,pos){const isNew=!id;
+  const q=isNew?{id:uid(),projectId:S.project.id,planId:pos.planId,x:pos.x,y:pos.y,title:'',text:'',answer:'',done:false,images:[],created:new Date().toISOString(),updated:new Date().toISOString()}
+             :S.questions.find(x=>x.id===id);if(!q)return;
+  const plan=S.plans.find(x=>x.id===q.planId);const imgs=[...q.images];const urls=[];
+  const m=modal(`<h3>${isNew?'Ny fråga':'?'+qIndex(q)+(q.title?' – '+esc(q.title):'')}</h3>
+  <div class="meta"><span>${esc(plan?.name||'')}</span><span>${fmtTime(q.created)}</span></div>
+  <div class="field"><label>Rubrik</label><input id="qTitle" value="${esc(q.title)}" placeholder="Vad ska kollas?"></div>
+  <div class="field"><label>Frågeställning</label><textarea id="qText" placeholder="Beskrivning, vad som ska mätas, tidigare noteringar…">${esc(q.text)}</textarea></div>
+  <div class="field"><label>Bilder</label><div class="qimgs" id="qImgs"></div>
+    <div class="row" style="margin:0"><button class="btn sm" id="qAddImg" type="button">Lägg till bild</button><div class="pastebox" style="flex:1">Ctrl+V / ⌘V klistrar in urklipp</div></div></div>
+  <div class="field"><label>Svar (fylls i på plats)</label><textarea id="qAnswer" placeholder="Observationer, mått, slutsats…">${esc(q.answer)}</textarea></div>
+  <label class="chk"><input type="checkbox" id="qDone" ${q.done?'checked':''}> Besvarad</label>
+  <div class="row"><button class="btn primary" data-a="save">Spara</button>${isNew?'':'<button class="btn" data-a="move">Flytta</button><button class="btn danger" data-a="del">Radera</button>'}<button class="btn" data-a="close">${isNew?'Avbryt':'Stäng'}</button></div>`,
+  async(a,mm)=>{document.removeEventListener('paste',onPaste);urls.forEach(u=>URL.revokeObjectURL(u));
+    if(a==='save'){q.title=mm.querySelector('#qTitle').value.trim();q.text=mm.querySelector('#qText').value;q.answer=mm.querySelector('#qAnswer').value;
+      q.done=mm.querySelector('#qDone').checked;q.images=imgs;q.updated=new Date().toISOString();
+      await put('questions',q);if(isNew){S.questions.push(q);if(S.mode==='addq')$('#hint').classList.remove('hidden')}
+      renderMarkers();renderQList();toast('Fråga sparad')}
+    if(a==='del'&&confirm('Radera frågan?')){await del('questions',q.id);S.questions=S.questions.filter(x=>x!==q);renderMarkers();renderQList()}
+    if(a==='move'){toast('Tryck på planen där frågan ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
+      const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;if(x>=0&&x<=1&&y>=0&&y<=1){q.x=x;q.y=y;q.planId=S.planId;q.updated=new Date().toISOString();await put('questions',q);renderMarkers();renderQList()}
+      vp.removeEventListener('pointerup',h,true)};setTimeout(()=>vp.addEventListener('pointerup',h,true),50)}});
+  function drawImgs(){const box=m.querySelector('#qImgs');box.innerHTML='';
+    imgs.forEach((im,i)=>{const u=URL.createObjectURL(im.thumb);urls.push(u);const d=document.createElement('div');d.className='qim';
+      d.innerHTML=`<img src="${u}" alt=""><button type="button" aria-label="Ta bort">×</button>`;
+      d.querySelector('img').onclick=()=>showLightbox(im.blob);d.querySelector('button').onclick=()=>{imgs.splice(i,1);drawImgs()};box.appendChild(d)})}
+  async function addImgs(files){for(const f of files){if(!f||!f.type.startsWith('image/'))continue;imgs.push({id:uid(),blob:f,thumb:await makeThumb(f)})}drawImgs()}
+  function onPaste(e){const items=[...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith('image/'));if(!items.length)return;e.preventDefault();addImgs(items.map(i=>i.getAsFile()))}
+  document.addEventListener('paste',onPaste);
+  m.querySelector('#qAddImg').onclick=()=>{$('#fileQImg').onchange=async e=>{const fs=[...e.target.files];e.target.value='';await addImgs(fs)};$('#fileQImg').click()};
+  drawImgs();if(isNew)setTimeout(()=>m.querySelector('#qTitle').focus(),50)}
+function mergeQuestions(local,incoming){ // returnerar lista; senaste updated vinner, bilder unionas
+  const map=new Map(local.map(q=>[q.id,q]));
+  for(const q of incoming){const ex=map.get(q.id);if(!ex){map.set(q.id,q);continue}
+    const have=new Set(ex.images.map(i=>i.id));const imgs=[...ex.images,...q.images.filter(i=>!have.has(i.id))];
+    if((q.updated||'')>(ex.updated||''))map.set(q.id,{...q,images:imgs});else ex.images=imgs}
+  return [...map.values()]}
 
 /* ---------- Modal ---------- */
 function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div class="overlay"><div class="modal">${html}</div></div>`;
@@ -556,33 +743,57 @@ function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div cl
   ov.addEventListener('pointerdown',e=>{if(e.target===ov)close('close')});return m}
 
 /* ---------- Export ---------- */
-$('#btnExport').onclick=()=>modal(`<h3>Exportera</h3><p class="meta">Zip innehåller planer, foton i mappar per besök, projekt.json och en fristående rapport.html. Zip-filer kan öppnas på en annan iPad och sammanfogas med samma projekt.</p>
-  <div class="row"><button class="btn primary" data-a="sess">Detta besök (.zip)</button><button class="btn primary" data-a="zip">Hela projektet (.zip)</button>
-  <button class="btn" data-a="html">Bara rapport.html</button><button class="btn" data-a="close">Avbryt</button></div>`,
-  async a=>{if(a==='sess')await exportZip(S.sessionId);if(a==='zip')await exportZip(null);if(a==='html')await exportHtmlOnly()});
+$('#btnExport').onclick=()=>{const dir=!!window.showDirectoryPicker;
+  modal(`<h3>Exportera</h3><p class="meta">Planer, foton i mappar per besök, projekt.json och besok.json per besök, plus en fristående rapport.html. Zip eller mapp med samma projekt sammanfogas vid import — inget skrivs över.</p>
+  <div class="field"><label>Detta besök</label><div class="row" style="margin:0"><button class="btn primary" data-a="sess">Zip</button>${dir?'<button class="btn primary" data-a="sessdir">Till mapp…</button>':''}</div></div>
+  <div class="field"><label>Hela projektet</label><div class="row" style="margin:0"><button class="btn" data-a="zip">Zip</button>${dir?'<button class="btn" data-a="zipdir">Till mapp…</button>':''}<button class="btn" data-a="html">Bara rapport.html</button></div></div>
+  <div class="row"><button class="btn" data-a="close">Avbryt</button></div>`,
+  async a=>{if(a==='sess')await exportZip(S.sessionId);if(a==='zip')await exportZip(null);if(a==='html')await exportHtmlOnly();
+    if(a==='sessdir')await exportDir(S.sessionId);if(a==='zipdir')await exportDir(null)})};
 function buildManifest(sessionFilter){
   const sessions=S.sessions.filter(s=>!sessionFilter||s.id===sessionFilter);
-  const pts=S.points.filter(p=>sessions.some(s=>s.id===p.sessionId));
-  return {app:'platsbesok',version:2,exported:new Date().toISOString(),
+  const proj={app:'platsbesok',version:3,exported:new Date().toISOString(),
     project:{id:S.project.id,name:S.project.name,created:S.project.created},
     files:S.files.map(f=>({id:f.id,name:f.name,path:`planer/${f.id}_${safeName(f.name)}`})),
-    plans:S.plans.map(p=>({id:p.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0})),
-    sessions:sessions.map(s=>({id:s.id,name:sessName(s),date:s.date,seq:s.seq,label:s.label||'',created:s.created,folder:sessFolder(s)})),
-    points:pts.map(p=>{const s=S.sessions.find(x=>x.id===p.sessionId),pl=S.plans.find(x=>x.id===p.planId);
+    plans:S.plans.map(p=>({id:p.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0}))};
+  const packs=sessions.map(s=>{const folder=sessFolder(s);
+    const meta={id:s.id,name:sessName(s),date:s.date,seq:s.seq,label:s.label||'',created:s.created,updated:s.updated||s.created,folder,sketches:s.sketches||{}};
+    const points=sessionPoints(s.id).map(p=>{const pl=S.plans.find(x=>x.id===p.planId);
       return {id:p.id,sessionId:p.sessionId,planId:p.planId,x:+p.x.toFixed(5),y:+p.y.toFixed(5),note:p.note,created:p.created,
         photos:p.photos.map((sh,i)=>({id:sh.id,heading:sh.heading,created:sh.created,annotated:!!sh.anno,
-          path:`${sessFolder(s)}/${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}${p.photos.length>1?String.fromCharCode(97+i):''}.${ext(shotBlob(sh))}`}))}})}}
+          path:`${folder}/${s.date}${s.seq>1?'_'+s.seq:''}_${safeName(pl?.name||'plan')}_${String(pointIndex(p)).padStart(2,'0')}${p.photos.length>1?String.fromCharCode(97+i):''}.${ext(shotBlob(sh))}`}))}});
+    return {meta,points}});
+  const questions=S.questions.map(q=>({id:q.id,planId:q.planId,x:+q.x.toFixed(5),y:+q.y.toFixed(5),title:q.title,text:q.text,answer:q.answer,done:!!q.done,created:q.created,updated:q.updated,
+    images:q.images.map((im,i)=>({id:im.id,path:`fragor/${q.id}_${i+1}.${ext(im.blob)}`}))}));
+  const flat={...proj,sessions:packs.map(x=>x.meta),points:packs.flatMap(x=>x.points),questions};
+  return {proj,packs,flat,questions}}
+function* exportEntries(man){ // yields [path, blob|string]
+  yield ['projekt.json',JSON.stringify(man.proj,null,2)];
+  for(const f of S.files)yield [man.proj.files.find(x=>x.id===f.id).path,f.blob];
+  for(const pk of man.packs)yield [`${pk.meta.folder}/besok.json`,JSON.stringify({app:'platsbesok',version:3,projectId:S.project.id,session:pk.meta,points:pk.points},null,2)];
+  if(man.questions.length)yield ['fragor/fragor.json',JSON.stringify({app:'platsbesok',version:3,projectId:S.project.id,questions:man.questions},null,2)]}
+function photoEntries(man){const out=[];for(const pk of man.packs)for(const mp of pk.points){const p=S.points.find(x=>x.id===mp.id);mp.photos.forEach((ph,i)=>out.push([ph.path,shotBlob(p.photos[i])]))}
+  for(const mq of man.questions){const q=S.questions.find(x=>x.id===mq.id);mq.images.forEach((im,i)=>out.push([im.path,q.images[i].blob]))}return out}
 async function exportZip(sessionFilter){busy(true);try{const man=buildManifest(sessionFilter);const zip=new JSZip();
-  zip.file('projekt.json',JSON.stringify(man,null,2));
-  for(const f of S.files)zip.file(man.files.find(x=>x.id===f.id).path,f.blob);
-  for(const mp of man.points){const p=S.points.find(x=>x.id===mp.id);
-    mp.photos.forEach((ph,i)=>zip.file(ph.path,shotBlob(p.photos[i])))}
-  zip.file('rapport.html',await buildReport(man));
+  for(const [path,data] of exportEntries(man))zip.file(path,data);
+  for(const [path,blob] of photoEntries(man))zip.file(path,blob);
+  zip.file('rapport.html',await buildReport(man.flat));
   const blob=await zip.generateAsync({type:'blob',compression:'STORE'});busy(false);
   const sfx=sessionFilter?safeName(sessName(curSession())):'platsbesok_'+today();
   offerSave(blob,`${safeName(S.project.name)}_${sfx}.zip`)}
   catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
-async function exportHtmlOnly(){busy(true);try{const html=await buildReport(buildManifest(null));busy(false);offerSave(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
+async function writePath(root,path,data){const parts=path.split('/');let d=root;
+  for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg,{create:true});
+  const fh=await d.getFileHandle(parts[parts.length-1],{create:true});const w=await fh.createWritable();await w.write(data);await w.close()}
+async function exportDir(sessionFilter){let root;
+  try{root=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Ingen mapp vald');return}
+  busy(true);try{const man=buildManifest(sessionFilter);let n=0;
+    for(const [path,data] of exportEntries(man)){await writePath(root,path,data)}
+    for(const [path,blob] of photoEntries(man)){await writePath(root,path,blob);n++}
+    await writePath(root,'rapport.html',await buildReport(man.flat));
+    toast(`Sparat i mappen: ${n} foton`)}
+  catch(e){console.error(e);toast('Kunde inte skriva till mappen: '+e.message)}finally{busy(false)}}
+async function exportHtmlOnly(){busy(true);try{const html=await buildReport(buildManifest(null).flat);busy(false);offerSave(new Blob([html],{type:'text/html'}),`${safeName(S.project.name)}_rapport_${today()}.html`)}
   catch(e){console.error(e);toast('Export misslyckades')}finally{busy(false)}}
 function offerSave(blob,name){const mb=(blob.size/1048576).toFixed(1);const file=new File([blob],name,{type:blob.type||'application/octet-stream'});
   const canPick=!!window.showSaveFilePicker,canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
@@ -597,7 +808,7 @@ async function buildReport(man){
   const plans=[];for(const pm of man.plans){const p=S.plans.find(x=>x.id===pm.id);const c=await getPlanCanvas(p);
     const s=Math.min(1,1800/Math.max(c.width,c.height));const o=document.createElement('canvas');
     o.width=Math.round(c.width*s);o.height=Math.round(c.height*s);o.getContext('2d').drawImage(c,0,0,o.width,o.height);
-    plans.push({...pm,img:o.toDataURL('image/jpeg',.8)})}
+    plans.push({...pm,img:o.toDataURL('image/jpeg',.8),w:o.width,h:o.height})}
   const points=[];for(const mp of man.points){const p=S.points.find(x=>x.id===mp.id);
     const photos=[];for(let i=0;i<p.photos.length;i++){const sh=p.photos[i];
       const b=await createImageBitmap(shotBlob(sh));const s=Math.min(1,1200/Math.max(b.width,b.height));
@@ -605,21 +816,32 @@ async function buildReport(man){
       c.getContext('2d').drawImage(b,0,0,c.width,c.height);b.close&&b.close();
       photos.push({id:sh.id,heading:sh.heading,created:sh.created,thumb:await blobToDataURL(sh.thumb),photo:c.toDataURL('image/jpeg',.75)})}
     points.push({id:mp.id,sessionId:mp.sessionId,planId:mp.planId,x:mp.x,y:mp.y,note:mp.note,n:pointIndex(p),photos})}
-  const data=JSON.stringify({project:{name:man.project.name},exported:man.exported,plans,sessions:man.sessions,points}).replace(/<\//g,'<\\/');
+  const questions=[];for(const mq of man.questions||[]){const q=S.questions.find(x=>x.id===mq.id);const images=[];
+    for(const im of q.images){const b=await createImageBitmap(im.blob);const sc=Math.min(1,1200/Math.max(b.width,b.height));const c=document.createElement('canvas');
+      c.width=Math.round(b.width*sc);c.height=Math.round(b.height*sc);c.getContext('2d').drawImage(b,0,0,c.width,c.height);b.close&&b.close();
+      images.push({thumb:await blobToDataURL(im.thumb),photo:c.toDataURL('image/jpeg',.75)})}
+    questions.push({id:q.id,n:qIndex(q),planId:q.planId,x:q.x,y:q.y,title:q.title,text:q.text,answer:q.answer,done:!!q.done,images})}
+  const data=JSON.stringify({project:{name:man.project.name},exported:man.exported,plans,sessions:man.sessions,points,questions}).replace(/<\//g,'<\\/');
   return `<!DOCTYPE html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(S.project.name)} – platsbesök</title>
-<style>body{margin:0;font:15px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;color:#1c1f24;background:#f3f4f6}header{padding:18px 20px 10px;background:#fff;border-bottom:1px solid #d9dce2}
-h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#6b7280}.bar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;background:#fff;border-bottom:1px solid #d9dce2;align-items:center}
-.bar button,.bar select{font:inherit;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #d9dce2;background:#fff;cursor:pointer}.bar button.on{background:#1c1f24;color:#fff;border-color:#1c1f24}
-#wrap{position:relative;margin:16px 20px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.12);display:inline-block;max-width:calc(100% - 40px)}#wrap img{display:block;max-width:100%;height:auto}
-.mk{position:absolute;width:0;height:0}.mk svg{position:absolute;left:-18px;top:-18px;width:36px;height:36px;overflow:visible;cursor:pointer}.mk circle.d{fill:#e8541f;stroke:#fff;stroke-width:2}.mk .w{fill:#e8541f;opacity:.45}
-.mk.old circle.d{fill:#4b5c72}.mk.old .w{fill:#4b5c72}.mk text{fill:#fff;font-size:9px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-#list{padding:0 20px 40px}.sess{margin:18px 0 8px;font-weight:600}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.card{background:#fff;border:1px solid #d9dce2;border-radius:8px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit}.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.card div{padding:6px 8px;font-size:13px;color:#6b7280}
-.card b{color:#1c1f24}#lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;color:#fff}#lb.on{display:flex}
-#lb img{max-width:100%;max-height:75vh;border-radius:6px}#lb p{margin:10px 0 0;max-width:800px;text-align:center}</style></head><body>
+<style>@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+body{margin:0;font:12px/1.45 'JetBrains Mono',ui-monospace,monospace;color:#1a1d2e;background:#f4efe3}header{padding:18px 20px 12px;background:#faf6ea;border-bottom:1px solid #d6cdb5}
+h1{margin:0;font:600 24px 'Fraunces',Georgia,serif}header p{margin:4px 0 0;color:#7a715f;font-size:9px;letter-spacing:.18em;text-transform:uppercase}
+.bar{display:flex;gap:0;flex-wrap:wrap;padding:0 14px;background:#faf6ea;border-bottom:1px solid #d6cdb5;align-items:center}.bar label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#7a715f;padding:8px 6px}
+.bar button{font:500 10px 'JetBrains Mono',monospace;letter-spacing:.18em;text-transform:uppercase;min-height:36px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:#7a715f;cursor:pointer}.bar button.on{color:#1a1d2e;border-bottom-color:#c8911a}
+.bar select{font:500 11px 'JetBrains Mono',monospace;min-height:30px;padding:0 8px;border-radius:6px;border:1.5px solid #d6cdb5;background:#f4efe3;margin:6px 0}
+#wrap{position:relative;margin:16px 20px;background:#fff;box-shadow:0 2px 12px rgba(26,29,46,.15);display:inline-block;max-width:calc(100% - 40px)}#wrap img{display:block;max-width:100%;height:auto}
+.mk{position:absolute;width:0;height:0}.mk svg{position:absolute;left:-18px;top:-18px;width:36px;height:36px;overflow:visible;cursor:pointer}.mk circle.d{fill:#b8423a;stroke:#faf6ea;stroke-width:2}.mk .w{fill:#b8423a;opacity:.4}
+.mk.old circle.d{fill:#1e5b8a}.mk.old .w{fill:#1e5b8a}.mk text{fill:#faf6ea;font:700 9px 'JetBrains Mono',monospace;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.mk.q rect{fill:#c8911a;stroke:#faf6ea;stroke-width:1.5}.mk.q text{fill:#1a1d2e;font-size:8px}.mk.q.done rect{fill:#a9a291}.mk.q.done text{fill:#faf6ea}
+.qrow{background:#faf6ea;border:1.5px solid #d6cdb5;border-radius:6px;padding:10px 12px;margin:8px 0}.qrow.done{opacity:.6}.qrow b{font:600 14px 'Fraunces',Georgia,serif}.qrow .qn{display:inline-block;background:#c8911a;color:#1a1d2e;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:8px;font-size:10px}
+.qrow.done .qn{background:#a9a291;color:#faf6ea}.qrow p{margin:6px 0;white-space:pre-wrap}.qrow .ans{border-left:3px solid #c8911a;padding-left:10px;color:#1a1d2e}.qrow .imgs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.qrow .imgs img{width:90px;height:90px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #d6cdb5}
+#list{padding:0 20px 40px}.sess{margin:18px 0 8px;font:600 15px 'Fraunces',Georgia,serif}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.card{background:#faf6ea;border:1.5px solid #d6cdb5;border-radius:6px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit}.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.card div{padding:6px 8px;font-size:10px;color:#7a715f}
+.card b{color:#1a1d2e;font-size:12px}#lb{position:fixed;inset:0;background:rgba(26,29,46,.88);display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px;color:#faf6ea}#lb.on{display:flex}
+#lb img{max-width:100%;max-height:75vh;border-radius:4px}#lb p{margin:10px 0 0;max-width:800px;text-align:center;font-size:11px;letter-spacing:.06em}</style></head><body>
 <header><h1>${esc(S.project.name)}</h1><p>Platsbesök – exporterat ${fmtTime(man.exported)}</p></header>
 <div class="bar" id="tabs"></div><div class="bar"><label>Visa besök: <select id="sel"></select></label></div>
-<div id="wrap"><img id="plan" alt=""><div id="mk"></div></div><div id="list"></div><div id="lb"><img id="lbimg" alt=""><p id="lbtxt"></p></div>
+<div id="wrap"><img id="plan" alt=""><svg id="sk" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></svg><div id="mk"></div></div><div id="list"></div><div id="lb"><img id="lbimg" alt=""><p id="lbtxt"></p></div>
 <script>const D=${data};let cur=D.plans[0]&&D.plans[0].id,sess='all';const $=s=>document.querySelector(s);const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function lbl(x,j){return x.n+(x.photos.length>1?String.fromCharCode(97+j):'')}
 function tabs(){$('#tabs').innerHTML=D.plans.map(p=>'<button class="'+(p.id===cur?'on':'')+'" data-id="'+p.id+'">'+E(p.name)+'</button>').join('');$('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.id;draw()});
@@ -628,53 +850,110 @@ function draw(){tabs();const p=D.plans.find(x=>x.id===cur);if(!p){$('#wrap').sty
 const pts=D.points.filter(x=>x.planId===p.id&&(sess==='all'||x.sessionId===sess));const last=D.sessions[D.sessions.length-1];
 $('#mk').innerHTML=pts.map(x=>{const ws=x.photos.filter(f=>f.heading!=null).map(f=>'<path class="w" d="M0,0 L-8,-15 A17,17 0 0 1 8,-15 Z" transform="rotate('+((f.heading+(p.north||0))%360)+')"/>').join('');
 return '<div class="mk'+(sess==='all'&&last&&x.sessionId!==last.id?' old':'')+'" style="left:'+x.x*100+'%;top:'+x.y*100+'%"><svg viewBox="-18 -18 36 36" data-id="'+x.id+'">'+ws+'<circle class="d" r="7"/><text>'+x.n+'</text></svg></div>'}).join('');
-$('#mk').querySelectorAll('svg').forEach(s=>s.onclick=()=>show(s.dataset.id,0));
+const skS=sess==='all'?D.sessions:D.sessions.filter(s=>s.id===sess);$('#sk').setAttribute('viewBox','0 0 '+p.w+' '+p.h);
+$('#sk').innerHTML=skS.flatMap(s=>((s.sketches||{})[p.id]||[]).map(it=>it.t==='text'?'<text x="'+it.x*p.w+'" y="'+it.y*p.h+'" fill="'+it.c+'" font-size="'+Math.round(p.w*0.014)+'" font-family="JetBrains Mono,monospace" font-weight="600" paint-order="stroke" stroke="#fff" stroke-width="'+Math.round(p.w*0.004)+'">'+E(it.text)+'</text>':'<polyline fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="'+it.c+'" stroke-width="'+it.w*p.w+'" points="'+it.pts.map(q=>(q[0]*p.w).toFixed(1)+','+(q[1]*p.h).toFixed(1)).join(' ')+'"/>')).join('');
+$('#mk').innerHTML+=(D.questions||[]).filter(q=>q.planId===p.id).map(q=>'<div class="mk q'+(q.done?' done':'')+'" style="left:'+q.x*100+'%;top:'+q.y*100+'%"><svg viewBox="-18 -18 36 36" data-q="'+q.id+'"><rect x="-10" y="-8" width="20" height="16" rx="3"/><text>?'+q.n+'</text></svg></div>').join('');
+$('#mk').querySelectorAll('svg[data-id]').forEach(s=>s.onclick=()=>show(s.dataset.id,0));
+$('#mk').querySelectorAll('svg[data-q]').forEach(s=>s.onclick=()=>{const el=document.getElementById('q-'+s.dataset.q);if(el)el.scrollIntoView({behavior:'smooth',block:'center'})});
 const ss=sess==='all'?D.sessions:D.sessions.filter(s=>s.id===sess);$('#list').innerHTML=ss.map(s=>{const sp=D.points.filter(x=>x.sessionId===s.id);if(!sp.length)return '';
 const nf=sp.reduce((a,x)=>a+x.photos.length,0);
 return '<div class="sess">'+E(s.name)+' ('+nf+' foton)</div><div class="grid">'+sp.map(x=>{const pl=D.plans.find(q=>q.id===x.planId);
 return x.photos.map((f,j)=>'<button class="card" data-id="'+x.id+'" data-j="'+j+'"><img src="'+f.thumb+'" alt=""><div><b>'+lbl(x,j)+'</b> '+E(pl?pl.name:'')+(f.heading==null?'':' · '+f.heading+'°')+(x.note?'<br>'+E(x.note):'')+'</div></button>').join('')}).join('')+'</div>'}).join('');
-$('#list').querySelectorAll('.card').forEach(c=>c.onclick=()=>show(c.dataset.id,+c.dataset.j))}
+$('#list').querySelectorAll('.card').forEach(c=>c.onclick=()=>show(c.dataset.id,+c.dataset.j));
+const qs=(D.questions||[]).filter(q=>q.planId===p.id);if(qs.length){$('#list').innerHTML+='<div class="sess">Frågor ('+qs.filter(q=>!q.done).length+' öppna)</div>'+qs.map(q=>'<div class="qrow'+(q.done?' done':'')+'" id="q-'+q.id+'"><span class="qn">?'+q.n+'</span><b>'+E(q.title||'(ingen rubrik)')+'</b>'+(q.text?'<p>'+E(q.text)+'</p>':'')+(q.answer?'<p class="ans">'+E(q.answer)+'</p>':'')+(q.images.length?'<div class="imgs">'+q.images.map((im,j)=>'<img src="'+im.thumb+'" data-q="'+q.id+'" data-j="'+j+'" alt="">').join('')+'</div>':'')+'</div>').join('');
+$('#list').querySelectorAll('.qrow img').forEach(im=>im.onclick=()=>{const q=D.questions.find(x=>x.id===im.dataset.q);$('#lbimg').src=q.images[+im.dataset.j].photo;$('#lbtxt').textContent='?'+q.n+' · '+(q.title||'');$('#lb').classList.add('on')})}}
 function show(id,j){const x=D.points.find(p=>p.id===id);const f=x.photos[j];const pl=D.plans.find(q=>q.id===x.planId),s=D.sessions.find(q=>q.id===x.sessionId);$('#lbimg').src=f.photo;
 $('#lbtxt').textContent='Foto '+lbl(x,j)+' · '+(s?s.name:'')+' · '+(pl?pl.name:'')+' · '+new Date(f.created).toLocaleString('sv-SE')+(f.heading==null?'':' · '+f.heading+'°')+(x.note?' — '+x.note:'');$('#lb').classList.add('on')}
 $('#lb').onclick=()=>$('#lb').classList.remove('on');draw();<\/script></body></html>`}
 
 /* ---------- Import (sammanfogar) ---------- */
-async function importZip(file){busy(true);try{const zip=await JSZip.loadAsync(file);const mf=zip.file('projekt.json');if(!mf)throw new Error('projekt.json saknas');
+function zipSource(zip){return {
+  file:async p=>zip.file(p)||null,
+  sessionPacks:async()=>{const out=[];for(const f of zip.file(/^besok\/[^/]+\/besok\.json$/))out.push(JSON.parse(await f.async('string')));return out}}}
+function listSource(files){ // FileList från webkitdirectory – strip första mappnamnet
+  const map=new Map();for(const f of files){const parts=f.webkitRelativePath.split('/');map.set(parts.slice(1).join('/'),f)}
+  const get=async p=>{const f=map.get(p);return f?{async:t=>t==='string'?f.text():Promise.resolve(f)}:null};
+  return {file:get,sessionPacks:async()=>{const out=[];for(const [p,f] of map)if(/^besok\/[^/]+\/besok\.json$/.test(p))out.push(JSON.parse(await f.text()));return out}}}
+async function pathExists(root,path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);await d.getFileHandle(parts[parts.length-1]);return true}catch{return false}}
+async function readJSON(root,path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);
+  return JSON.parse(await (await (await d.getFileHandle(parts[parts.length-1])).getFile()).text())}catch{return null}}
+async function unpackZips(root){let n=0,files=0;const rootMan=await readJSON(root,'projekt.json');const names=[];
+  for await(const [name,h] of root.entries())if(h.kind==='file'&&/\.zip$/i.test(name))names.push(name);
+  for(const name of names){const f=await (await root.getFileHandle(name)).getFile();let zip;try{zip=await JSZip.loadAsync(f)}catch{continue}
+    const mf=zip.file('projekt.json');if(!mf)continue;const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok'||!man.project?.id)continue;
+    if(rootMan&&rootMan.project?.id!==man.project.id){toast(`${name} tillhör ett annat projekt – hoppar över`);continue}
+    for(const [path,e] of Object.entries(zip.files)){if(e.dir||path==='rapport.html'||path==='projekt.json')continue;
+      if(path==='fragor/fragor.json'){const inc=JSON.parse(await e.async('string'));const cur=await readJSON(root,path);
+        const merged=cur?mergeQuestions(cur.questions||[],inc.questions||[]):(inc.questions||[]);
+        await writePath(root,path,JSON.stringify({app:'platsbesok',version:3,projectId:man.project.id,questions:merged},null,2));continue}
+      if(/^besok\/[^/]+\/besok\.json$/.test(path)){const inc=JSON.parse(await e.async('string'));const cur=await readJSON(root,path);
+        if(cur){const newer=(inc.session.updated||'')>(cur.session.updated||'');const pm=new Map(cur.points.map(x=>[x.id,x]));
+          for(const ip of inc.points){const cp=pm.get(ip.id);if(!cp)pm.set(ip.id,ip);else{const have=new Set(cp.photos.map(f=>f.id));cp.photos.push(...ip.photos.filter(f=>!have.has(f.id)));if(newer)cp.note=ip.note}}
+          await writePath(root,path,JSON.stringify({...cur,session:newer?inc.session:cur.session,points:[...pm.values()]},null,2))}
+        else await writePath(root,path,await e.async('blob'));continue}
+      if(await pathExists(root,path))continue;await writePath(root,path,await e.async('blob'));files++}
+    if(man.version<3){ // äldre zip: skapa besok.json per besök
+      for(const se of man.sessions){const folder=se.folder||`besok/${se.date}${se.seq>1?'_'+se.seq:''}${se.label?'_'+safeName(se.label):''}`;
+        if(await pathExists(root,`${folder}/besok.json`))continue;
+        await writePath(root,`${folder}/besok.json`,JSON.stringify({app:'platsbesok',version:3,projectId:man.project.id,session:{...se,folder},points:man.points.filter(p=>p.sessionId===se.id)},null,2))}}
+    if(!rootMan&&!await pathExists(root,'projekt.json')){const {sessions,points,...rest}=man;await writePath(root,'projekt.json',JSON.stringify({...rest,version:3},null,2))}
+    await writePath(root,`importerade_zip/${name}`,f);await root.removeEntry(name);n++}
+  return {n,files}}
+function dirSource(root){
+  async function get(path){try{const parts=path.split('/');let d=root;for(const seg of parts.slice(0,-1))d=await d.getDirectoryHandle(seg);
+    const f=await (await d.getFileHandle(parts[parts.length-1])).getFile();return {async:t=>t==='string'?f.text():Promise.resolve(f)}}catch{return null}}
+  return {file:get,
+    sessionPacks:async()=>{const out=[];let bd;try{bd=await root.getDirectoryHandle('besok')}catch{return out}
+      for await(const [name,h] of bd.entries()){if(h.kind!=='directory')continue;const e=await get(`besok/${name}/besok.json`);if(e)out.push(JSON.parse(await e.async('string')))}return out}}}
+async function importFrom(src){busy(true);try{const mf=await src.file('projekt.json');if(!mf)throw new Error('projekt.json saknas');
   const man=JSON.parse(await mf.async('string'));if(man.app!=='platsbesok')throw new Error('Fel filtyp');
   let proj,added={pl:0,se:0,ph:0};
   if(man.version>=2&&man.project.id){
+    let sessions,points;
+    if(man.version>=3){const packs=(await src.sessionPacks()).filter(x=>x.projectId===man.project.id);sessions=packs.map(x=>x.session);points=packs.flatMap(x=>x.points)}
+    else{sessions=man.sessions;points=man.points}
     proj=(await getAll('projects')).find(x=>x.id===man.project.id);
     if(!proj){proj={id:man.project.id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj)}
     const exF=new Set((await byProject('files',proj.id)).map(x=>x.id));
     const exPl=new Set((await byProject('plans',proj.id)).map(x=>x.id));
     const exSe=new Set((await byProject('sessions',proj.id)).map(x=>x.id));
     const exP=new Map((await byProject('points',proj.id)).map(x=>[x.id,x]));
-    for(const f of man.files){if(exF.has(f.id))continue;const e=zip.file(f.path);if(!e)continue;
+    for(const f of man.files){if(exF.has(f.id))continue;const e=await src.file(f.path);if(!e)continue;
       await put('files',{id:f.id,projectId:proj.id,name:f.name,blob:await e.async('blob')})}
     for(const p of man.plans){if(exPl.has(p.id))continue;
       await put('plans',{id:p.id,projectId:proj.id,fileId:p.fileId,page:p.page,name:p.name,north:p.north||0,order:p.order??0});added.pl++}
-    for(const s of man.sessions){if(exSe.has(s.id))continue;
-      await put('sessions',{id:s.id,projectId:proj.id,date:s.date,seq:s.seq??1,label:s.label||'',created:s.created});added.se++}
-    for(const mp of man.points){
-      const shots=[];for(const ph of mp.photos){const e=zip.file(ph.path);if(!e)continue;const blob=await e.async('blob');
+    const exSeMap=new Map((await byProject('sessions',proj.id)).map(x=>[x.id,x]));
+    for(const s of sessions){const ex=exSeMap.get(s.id);
+      if(!ex){await put('sessions',{id:s.id,projectId:proj.id,date:s.date,seq:s.seq??1,label:s.label||'',created:s.created,updated:s.updated||s.created,sketches:s.sketches||{}});added.se++}
+      else if((s.updated||'')>(ex.updated||'')){await put('sessions',{...ex,label:s.label||ex.label,updated:s.updated,sketches:s.sketches||ex.sketches||{}})}}
+    for(const mp of points){const ex=exP.get(mp.id);const have=new Set(ex?.photos?ex.photos.map(x=>x.id):[]);
+      const shots=[];for(const ph of mp.photos){if(have.has(ph.id))continue;const e=await src.file(ph.path);if(!e)continue;const blob=await e.async('blob');
         shots.push({id:ph.id,blob,thumb:await makeThumb(blob),heading:ph.heading??null,created:ph.created})}
-      const ex=exP.get(mp.id);
-      if(ex){if(!ex.photos)continue;const have=new Set(ex.photos.map(x=>x.id));let ny=false;
-        for(const sh of shots)if(!have.has(sh.id)){ex.photos.push(sh);added.ph++;ny=true}
-        if(ny){ex.photos.sort((a,b)=>a.created.localeCompare(b.created));await put('points',ex)}}
+      if(ex){if(!ex.photos||!shots.length)continue;ex.photos.push(...shots);added.ph+=shots.length;
+        ex.photos.sort((a,b)=>a.created.localeCompare(b.created));await put('points',ex)}
       else if(shots.length){await put('points',{id:mp.id,projectId:proj.id,sessionId:mp.sessionId,planId:mp.planId,x:mp.x,y:mp.y,note:mp.note||'',created:mp.created,photos:shots});added.ph+=shots.length}}
-    toast(`Sammanfogat: +${added.se} besök, +${added.ph} foton${added.pl?`, +${added.pl} planer`:''}`)}
+    const qf=await src.file('fragor/fragor.json');
+    if(qf){const inc=JSON.parse(await qf.async('string'));const exQ=await byProject('questions',proj.id);const exMap=new Map(exQ.map(q=>[q.id,q]));let nq=0;
+      for(const mq of inc.questions||[]){const ex=exMap.get(mq.id);const have=new Set(ex?ex.images.map(i=>i.id):[]);
+        const images=ex?[...ex.images]:[];
+        for(const im of mq.images||[]){if(have.has(im.id))continue;const e=await src.file(im.path);if(!e)continue;const blob=await e.async('blob');images.push({id:im.id,blob,thumb:await makeThumb(blob)})}
+        if(!ex){await put('questions',{id:mq.id,projectId:proj.id,planId:mq.planId,x:mq.x,y:mq.y,title:mq.title||'',text:mq.text||'',answer:mq.answer||'',done:!!mq.done,created:mq.created,updated:mq.updated||mq.created,images});nq++}
+        else if((mq.updated||'')>(ex.updated||'')||images.length!==ex.images.length){
+          const newer=(mq.updated||'')>(ex.updated||'');
+          await put('questions',{...ex,...(newer?{planId:mq.planId,x:mq.x,y:mq.y,title:mq.title||'',text:mq.text||'',answer:mq.answer||'',done:!!mq.done,updated:mq.updated}:{}),images});nq++}}
+      added.q=nq}
+    toast(`Sammanfogat: +${added.se} besök, +${added.ph} foton${added.pl?`, +${added.pl} planer`:''}${added.q?`, ${added.q} frågor`:''}`)}
   else{ // gammal zip (v1) – skapa nytt projekt
     const id=uid(),map=new Map();proj={id,name:man.project.name,created:man.project.created||new Date().toISOString()};await put('projects',proj);
-    for(const f of man.files){const e=zip.file(f.path);if(!e)continue;const nid=uid();map.set(f.id,nid);await put('files',{id:nid,projectId:id,name:f.name,blob:await e.async('blob')})}
+    for(const f of man.files){const e=await src.file(f.path);if(!e)continue;const nid=uid();map.set(f.id,nid);await put('files',{id:nid,projectId:id,name:f.name,blob:await e.async('blob')})}
     for(const p of man.plans){const nid=uid();map.set(p.id,nid);await put('plans',{id:nid,projectId:id,fileId:map.get(p.fileId),page:p.page,name:p.name,north:p.north||0,order:p.order??0})}
     for(const s of man.sessions){const nid=uid();map.set(s.id,nid);await put('sessions',{id:nid,projectId:id,date:s.date,seq:s.seq??1,label:s.label??(s.name&&s.name!==s.date?s.name:''),created:s.created})}
-    for(const p of man.points){const e=zip.file(p.path);if(!e)continue;const blob=await e.async('blob');
+    for(const p of man.points){const e=await src.file(p.path);if(!e)continue;const blob=await e.async('blob');
       await put('points',{id:uid(),projectId:id,sessionId:map.get(p.sessionId),planId:map.get(p.planId),x:p.x,y:p.y,note:p.note||'',created:p.created,
         photos:[{id:uid(),blob,thumb:await makeThumb(blob),heading:p.heading??null,created:p.created}]});added.ph++}
     toast(`Importerat: ${added.ph} foton`)}
-  canvasCache.clear();pdfCache.clear();openProject(proj)}
-  catch(e){console.error(e);toast('Import misslyckades: '+e.message)}finally{busy(false)}}
+  canvasCache.clear();pdfCache.clear();await openProject(proj);return true}
+  catch(e){console.error(e);toast('Import misslyckades: '+e.message);return false}finally{busy(false)}}
 
 /* ---------- Start ---------- */
 openDB().then(showProjects).catch(e=>{console.error(e);alert('Kunde inte öppna lokal lagring: '+e.message)});
