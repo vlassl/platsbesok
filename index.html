@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f4efe3">
-<title>Platsbesök v0.14</title>
+<title>Platsbesök v0.15</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -147,7 +147,7 @@ input,select,textarea{font:inherit;color:inherit}
   padding:14px 16px calc(var(--sab) + 14px);box-shadow:0 -6px 24px rgba(26,29,46,.18);z-index:20}
 .sheet h3{margin:0 0 6px;font:600 17px var(--serif)}
 .sheet p{margin:0 0 12px;color:var(--mute);font-size:11px;letter-spacing:.04em}
-.overlay{position:absolute;inset:0;background:rgba(26,29,46,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.overlay{position:absolute;inset:0;background:rgba(26,29,46,.5);z-index:45;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:700px){.overlay{align-items:center}.overlay .modal{border-radius:8px;max-width:560px;width:calc(100% - 40px);max-height:90vh;border:1.5px solid var(--line)}}
 .modal{background:var(--panel);width:100%;max-height:92vh;border-radius:8px 8px 0 0;overflow:auto;padding:16px 16px calc(var(--sab) + 16px)}
 .modal h3{margin:0 0 10px;font:600 19px var(--serif)}
@@ -169,7 +169,7 @@ input,select,textarea{font:inherit;color:inherit}
 
 <!-- Projektlista -->
 <div id="viewProjects" class="view">
-  <div class="version">Platsbesök · v0.14</div>
+  <div class="version">Platsbesök · v0.15</div>
   <h1>Platsbesök</h1>
   <p class="sub">Foton kopplade till punkter på planritningar.</p>
   <div id="plist" class="plist"></div>
@@ -339,7 +339,7 @@ async function showProjects(){
     b.innerHTML=`<span><b>${esc(p.name)}</b><small>Skapat ${p.created.slice(0,10)}</small></span><span class="chev">›</span>`;
     b.onclick=()=>openProject(p);el.appendChild(b)}
 }
-$('#btnNewProject').onclick=async()=>{const name=prompt('Projektnamn:');if(!name)return;const p={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',p);openProject(p)};
+$('#btnNewProject').onclick=async()=>{const name=await ask('Nytt projekt','Projektnamn','');if(!name)return;const p={id:uid(),name:name.trim(),created:new Date().toISOString()};await put('projects',p);openProject(p)};
 $('#btnImport').onclick=()=>$('#fileZip').click();
 $('#btnImportDir').onclick=async()=>{
   if(window.showDirectoryPicker){let h;try{h=await showDirectoryPicker({mode:'readwrite'})}catch(e){if(e.name!=='AbortError')toast('Kunde inte öppna mappen: '+e.message);return}
@@ -380,9 +380,9 @@ $('#btnBack').onclick=()=>{setMode('view');showProjects()};
 $('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
   <div class="row"><button class="btn" data-a="rename">Byt namn</button><button class="btn" data-a="pdf">Lägg till PDF</button>
   <button class="btn danger" data-a="del">Radera projekt</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
-  if(a==='rename'){const n=prompt('Projektnamn:',S.project.name);if(n){S.project.name=n.trim();await put('projects',S.project);$('#projTitle').textContent=S.project.name}}
+  if(a==='rename'){const n=await ask('Byt namn','Projektnamn',S.project.name);if(n){S.project.name=n.trim();await put('projects',S.project);$('#projTitle').textContent=S.project.name}}
   if(a==='pdf')$('#filePdf').click();
-  if(a==='del'&&confirm(`Radera "${S.project.name}" med alla planer och foton?`)){
+  if(a==='del'&&await confirmA(`Radera "${S.project.name}" med alla planer och foton?`)){
     for(const s of ['files','plans','sessions','points','questions'])for(const o of await byProject(s,S.project.id))await del(s,o.id);
     await del('projects',S.project.id);showProjects()}
 });
@@ -391,7 +391,7 @@ $('#btnProjMenu').onclick=()=>modal(`<h3>${esc(S.project.name)}</h3>
 const sessName=s=>`${s.date}${s.seq>1?' #'+s.seq:''}${s.label?' – '+s.label:''}`;
 const sessFolder=s=>`besok/${s.date}${s.seq>1?'_'+s.seq:''}${s.label?'_'+safeName(s.label):''}`;
 async function newSession(silent){const d=today();let label='';
-  if(!silent){const v=prompt('Tilläggsnamn (valfritt), t.ex. Inventering hyresgäst 1:','');if(v===null)return;label=v.trim()}
+  if(!silent){const v=await ask('Nytt besök','Tilläggsnamn (valfritt), t.ex. Inventering hyresgäst 1','');if(v===null)return;label=v.trim()}
   const seq=S.sessions.filter(x=>x.date===d).length+1;
   const s={id:uid(),projectId:S.project.id,date:d,seq,label,created:new Date().toISOString()};await put('sessions',s);S.sessions.push(s);S.sessionId=s.id;
   if(!silent){renderSessions();renderMarkers();renderStrip();renderSketch()}return s}
@@ -406,9 +406,9 @@ $('#btnSessMenu').onclick=()=>{const s=curSession();const pts=sessionPoints(s.id
   ${n&&canShareFiles(sessionFiles(s))?'<button class="btn" data-a="share">Spara alla foton i Bilder</button>':''}
   <button class="btn danger" data-a="del">Radera besök</button><button class="btn" data-a="close">Stäng</button></div>`,async a=>{
   if(a==='share')await shareFiles(sessionFiles(s),sessName(s));
-  if(a==='rename'){const v=prompt('Tilläggsnamn:',s.label||'');if(v!==null){s.label=v.trim();await put('sessions',s);renderSessions()}}
+  if(a==='rename'){const v=await ask('Ändra tilläggsnamn','Tilläggsnamn',s.label||'');if(v!==null){s.label=v.trim();await put('sessions',s);renderSessions()}}
   if(a==='toggle'){S.showAll=!S.showAll;renderMarkers()}
-  if(a==='del'&&confirm(`Radera besöket "${sessName(s)}" och dess ${n} foton?`)){
+  if(a==='del'&&await confirmA(`Radera besöket "${sessName(s)}" och dess ${n} foton?`)){
     for(const p of pts)await del('points',p.id);
     await del('sessions',s.id);await loadProject();if(!S.sessions.length)await newSession(true);S.sessionId=S.sessions[S.sessions.length-1].id;
     renderSessions();renderMarkers();renderStrip()}
@@ -429,7 +429,7 @@ $('#filePdf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';
 function renderPlans(){const el=$('#plans');el.innerHTML='';
   for(const p of S.plans){const b=document.createElement('button');b.className='ptab'+(p.id===S.planId?' on':'');b.textContent=p.name;
     let t,lp=false;
-    b.onpointerdown=()=>{lp=false;t=setTimeout(()=>{lp=true;const n=prompt('Namn på planen:',p.name);if(n&&n.trim()){p.name=n.trim();put('plans',p).then(()=>{renderPlans();renderStrip()})}},550)};
+    b.onpointerdown=()=>{lp=false;t=setTimeout(async()=>{lp=true;const n=await ask('Namn på planen','Namn',p.name);if(n&&n.trim()){p.name=n.trim();await put('plans',p);renderPlans();renderStrip()}},550)};
     b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(t);b.oncontextmenu=e=>e.preventDefault();
     b.onclick=async()=>{if(lp)return;S.planId=p.id;renderPlans();await showPlan();renderStrip()};el.appendChild(b)}
   const add=document.createElement('button');add.className='ptab';add.textContent='+ PDF';add.onclick=()=>$('#filePdf').click();el.appendChild(add);
@@ -453,7 +453,7 @@ $('#btnPlanMenu').onclick=()=>{const p=curPlan();if(!p)return;
   <div class="row"><button class="btn primary" data-a="save">Spara</button><button class="btn" data-a="north">Ställ in norr</button><button class="btn danger" data-a="del">Ta bort plan</button><button class="btn" data-a="close">Avbryt</button></div>`,async(a,m)=>{
   if(a==='save'){p.name=m.querySelector('#fName').value.trim()||p.name;await put('plans',p);renderPlans();renderStrip()}
   if(a==='north')startNorth();
-  if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!confirm(`Ta bort "${p.name}"${n?` och ${n} punkter på den`:''}?`))return;
+  if(a==='del'){const n=S.points.filter(x=>x.planId===p.id).length;if(!await confirmA(`Ta bort "${p.name}"${n?` och ${n} punkter på den`:''}?`))return;
     for(const x of S.points.filter(x=>x.planId===p.id))await del('points',x.id);for(const x of S.questions.filter(x=>x.planId===p.id))await del('questions',x.id);await del('plans',p.id);
     if(!S.plans.some(q=>q.fileId===p.fileId&&q.id!==p.id)){await del('files',p.fileId)}
     canvasCache.delete(p.id);await loadProject();S.planId=S.plans[0]?.id||null;renderPlans();await showPlan();renderStrip();renderQList()}
@@ -503,7 +503,7 @@ function onTap(e,target){const mk=target.closest&&target.closest('.marker');
   if((S.mode!=='add'&&S.mode!=='addq'&&S.mode!=='sketch')||!curPlan())return;
   const r=vp.getBoundingClientRect(),cv=$('#planCanvas');const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;
   if(x<0||x>1||y<0||y>1)return;
-  if(S.mode==='sketch'){if(SK.text){const t=prompt('Text:');if(t&&t.trim()){skAdd({t:'text',x,y,text:t.trim(),c:SK.color})}}return}
+  if(S.mode==='sketch'){if(SK.text)ask('Text på planen','Text','').then(t=>{if(t&&t.trim())skAdd({t:'text',x,y,text:t.trim(),c:SK.color})});return}
   if(S.mode==='addq'){openQuestion(null,{x,y,planId:S.planId});return}
   S.pending={x,y,planId:S.planId};renderMarkers();$('#pendSheet').classList.remove('hidden');$('#hint').classList.add('hidden');updateCompassUI()}
 
@@ -560,7 +560,7 @@ $('#skText').onclick=()=>{SK.text=!SK.text;$('#skText').classList.toggle('primar
 $('#skFinger').onclick=()=>{SK.finger=!SK.finger;$('#skFinger').classList.toggle('primary',SK.finger)};
 $('#skFinger').classList.add('primary');
 $('#skUndo').onclick=async()=>{const d=skData();if(!d||!d.length)return;d.pop();const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()};
-$('#skClear').onclick=async()=>{const d=skData();if(!d||!d.length)return;if(!confirm('Rensa allt ritat på denna plan för detta besök?'))return;d.length=0;const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()};
+$('#skClear').onclick=async()=>{const d=skData();if(!d||!d.length)return;if(!await confirmA('Rensa allt ritat på denna plan för detta besök?'))return;d.length=0;const s=curSession();s.updated=new Date().toISOString();await put('sessions',s);renderSketch()};
 $('#skDone').onclick=()=>{SK.text=false;$('#skText').classList.remove('primary');setMode('view')};
 
 /* ---------- Kompass ---------- */
@@ -623,7 +623,7 @@ function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const pl
   async(a,mm)=>{urls.forEach(u=>URL.revokeObjectURL(u));
     if(a==='save'){p.note=mm.querySelector('#fNote').value;await put('points',p);toast('Sparat')}
     if(a==='addshot'){addTarget=p.id;capturedHeading=lastHeading;$('#fileCam').click()}
-    if(a==='del'&&confirm('Radera punkten med alla foton?')){p.photos.forEach(sh=>dropURL(sh.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);renderMarkers();renderStrip()}
+    if(a==='del'&&await confirmA('Radera punkten med alla foton?')){p.photos.forEach(sh=>dropURL(sh.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);renderMarkers();renderStrip()}
     if(a==='move'){toast('Tryck på planen där punkten ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
       const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;if(x>=0&&x<=1&&y>=0&&y<=1){p.x=x;p.y=y;p.planId=S.planId;await put('points',p);renderMarkers();renderStrip()}
       vp.removeEventListener('pointerup',h,true)};setTimeout(()=>vp.addEventListener('pointerup',h,true),50)}});
@@ -633,9 +633,9 @@ function openPoint(id){const p=S.points.find(x=>x.id===id);if(!p)return;const pl
     if(act==='draw'){$('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));startDraw(p,sh);return}
     if(act==='undraw'){delete sh.anno;sh.thumb=await makeThumb(sh.blob);dropURL(sh.id);await put('points',p);
       $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip();openPoint(p.id);return}
-    if(act==='delshot'){if(p.photos.length===1){if(confirm('Sista fotot – radera hela punkten?')){p.photos.forEach(x=>dropURL(x.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);
-        $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip()}return}
-      if(!confirm('Radera fotot?'))return;dropURL(sh.id);p.photos.splice(i,1);await put('points',p);
+    if(act==='delshot'){if(p.photos.length===1){if(await confirmA('Sista fotot – radera hela punkten?')){p.photos.forEach(x=>dropURL(x.id));await del('points',p.id);S.points=S.points.filter(x=>x!==p);
+        $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip()}else openPoint(p.id);return}
+      if(!await confirmA('Radera fotot?')){openPoint(p.id);return}dropURL(sh.id);p.photos.splice(i,1);await put('points',p);
       $('#modalHost').innerHTML='';urls.forEach(u=>URL.revokeObjectURL(u));renderMarkers();renderStrip();openPoint(p.id)}}})}
 
 /* ---------- Rita på foto ---------- */
@@ -673,7 +673,7 @@ dw.addEventListener('pointermove',e=>{if(!DW.cur||e.pointerId!==DW.cur.pid)retur
 function dUp(e){if(DW.cur&&e.pointerId===DW.cur.pid){if(DW.cur.pts.length>1)DW.strokes.push(DW.cur);else redrawStrokes();DW.cur=null}}
 dw.addEventListener('pointerup',dUp);dw.addEventListener('pointercancel',dUp);
 $('#dUndo').onclick=()=>{DW.strokes.pop();redrawStrokes()};
-$('#dClear').onclick=()=>{if(DW.strokes.length&&!confirm('Rensa alla nya streck?'))return;DW.strokes=[];redrawStrokes()};
+$('#dClear').onclick=async()=>{if(DW.strokes.length&&!await confirmA('Rensa alla nya streck?'))return;DW.strokes=[];redrawStrokes()};
 $('#dCancel').onclick=()=>closeDraw(false);
 $('#dSave').onclick=()=>closeDraw(true);
 async function closeDraw(save){const p=DW.point,sh=DW.shot;
@@ -718,7 +718,7 @@ function openQuestion(id,pos){const isNew=!id;
       q.done=mm.querySelector('#qDone').checked;q.images=imgs;q.updated=new Date().toISOString();
       await put('questions',q);if(isNew){S.questions.push(q);if(S.mode==='addq')$('#hint').classList.remove('hidden')}
       renderMarkers();renderQList();toast('Fråga sparad')}
-    if(a==='del'&&confirm('Radera frågan?')){await del('questions',q.id);S.questions=S.questions.filter(x=>x!==q);renderMarkers();renderQList()}
+    if(a==='del'&&await confirmA('Radera frågan?')){await del('questions',q.id);S.questions=S.questions.filter(x=>x!==q);renderMarkers();renderQList()}
     if(a==='move'){toast('Tryck på planen där frågan ska vara');const h=async e=>{const r=vp.getBoundingClientRect(),cv=$('#planCanvas');
       const x=(e.clientX-r.left-V.px)/V.z/cv.width,y=(e.clientY-r.top-V.py)/V.z/cv.height;if(x>=0&&x<=1&&y>=0&&y<=1){q.x=x;q.y=y;q.planId=S.planId;q.updated=new Date().toISOString();await put('questions',q);renderMarkers();renderQList()}
       vp.removeEventListener('pointerup',h,true)};setTimeout(()=>vp.addEventListener('pointerup',h,true),50)}});
@@ -737,6 +737,17 @@ function mergeQuestions(local,incoming){ // returnerar lista; senaste updated vi
     const have=new Set(ex.images.map(i=>i.id));const imgs=[...ex.images,...q.images.filter(i=>!have.has(i.id))];
     if((q.updated||'')>(ex.updated||''))map.set(q.id,{...q,images:imgs});else ex.images=imgs}
   return [...map.values()]}
+
+/* ---------- Dialoger (ersätter prompt/confirm) ---------- */
+function ask(title,label,def){return new Promise(res=>{
+  const m=modal(`<h3>${esc(title)}</h3><div class="field"><label>${esc(label)}</label><input id="askIn" value="${esc(def||'')}"></div>
+  <div class="row"><button class="btn primary" data-a="ok">OK</button><button class="btn" data-a="close">Avbryt</button></div>`,
+  (a,mm)=>res(a==='ok'?mm.querySelector('#askIn').value:null));
+  const inp=m.querySelector('#askIn');inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();m.querySelector('[data-a="ok"]').click()}};setTimeout(()=>{inp.focus();inp.select()},60)})}
+function confirmA(msg){return new Promise(res=>modal(`<h3>Bekräfta</h3><p class="meta" style="text-transform:none;font-size:13px;letter-spacing:0">${esc(msg)}</p>
+  <div class="row"><button class="btn danger" data-a="ok">Ja</button><button class="btn" data-a="close">Avbryt</button></div>`,a=>res(a==='ok')))}
+window.addEventListener('error',e=>toast('Fel: '+(e.message||e.error)));
+window.addEventListener('unhandledrejection',e=>toast('Fel: '+(e.reason&&e.reason.message||e.reason)));
 
 /* ---------- Modal ---------- */
 function modal(html,onAction){const host=$('#modalHost');host.innerHTML=`<div class="overlay"><div class="modal">${html}</div></div>`;
